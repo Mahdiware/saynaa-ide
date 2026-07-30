@@ -1,0 +1,64 @@
+import java, utils, Zip, os, path, permissions
+
+File = java.bindClass('java.io.File')
+FileOutputStream = java.bindClass('java.io.FileOutputStream')
+FileInputStream = java.bindClass('java.io.FileInputStream')
+StringList = java.bindClass('decoder.res.StringList')
+AXmlDecoder = java.bindClass('decoder.res.AXmlDecoder')
+ARSCDecoder = java.bindClass('decoder.res.ARSCDecoder')
+Signer = java.bindClass('apksigner.Signer')
+
+framepath = java.saynaadir .. "/icon/frame.apk"
+
+function build(context, config, srcpath, output)
+  file_dir = str(context.getFilesDir().getParentFile())
+  app_cache = file_dir .. "/app_cache"
+  //tmp_cache = app_cache .. "/" .. config.app.name
+  tmp_cache = app_cache
+  tmp_assets = tmp_cache .. "/assets"
+  
+  
+  os.system("rm -r $app_cache")
+  os.system("mkdir -p $tmp_assets")
+
+  if(!path.exists(output)) then
+    os.mkdir(output)
+  end
+  
+  if(!path.isdir(output))
+    error("Something Wrong!")
+  end
+
+  utils.compileCode(srcpath, tmp_assets)
+
+  apkname = config.app.name
+  apkpackqge = config.app.package
+  iconpath = tmp_assets .. "/" .. config.app.icon
+
+  tmp = tmp_cache .. "/tmp.apk"
+  apkpath = output .. "/$apkname-release.apk"
+  
+  os.system("cp $framepath $tmp")
+
+  manifestpath = tmp_cache .. "/AndroidManifest.xml"
+  utils.extractFile(tmp, "AndroidManifest.xml", manifestpath)
+
+  pt = File(manifestpath)
+  fis = FileInputStream(pt);
+  list = StringList()
+  decoder = AXmlDecoder.read(list, fis)
+  decoder.setString(list, "com.package.name", apkpackqge);
+  decoder.setString(list, "Application Name", apkname);
+  fos = FileOutputStream(pt)
+  decoder.save(list, fos);
+
+
+  z = Zip.ZipFile(tmp, "a")
+  z.write(manifestpath, "AndroidManifest.xml")
+  z.write(iconpath, "res/icon.png")
+  z.close()
+
+  utils.addZipFolder(tmp, "assets", tmp_assets)
+  Signer.sign(tmp, apkpath)
+  permissions.installApk(context, apkpath)
+end

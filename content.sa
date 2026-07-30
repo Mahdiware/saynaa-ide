@@ -1,0 +1,149 @@
+import "android.widget.*"
+import "android.view.*"
+import "android.graphics.*"
+import "android.graphics.drawable.*"
+
+counter = 0
+
+function toast(message)
+  Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+end
+
+function updateCounter()
+  CounterText.setText("$counter")
+end
+
+# Helper function to generate smooth, modern rounded backgrounds dynamically
+function roundedRect(colorHex, radius)
+  d = GradientDrawable()
+  d.setShape(GradientDrawable.RECTANGLE)
+  d.setCornerRadius(radius)
+  d.setColor(Color.parseColor(colorHex))
+  return d
+end
+
+# theme
+bgDark = "#0D1117"
+cardColor = "#161B22"
+accentBlue = "#58A6FF"
+accentRed = "#F85149"
+textMain = "#C9D1D9"
+textMuted = "#8B949E"
+
+CounterUI = {
+  LinearLayout,
+  orientation: 'vertical',
+  layout_width: 'match_parent',
+  layout_height: 'match_parent',
+  gravity: 'center',
+  backgroundColor: bgDark,
+
+  {
+    # Main Floating Card
+    LinearLayout,
+    orientation: 'vertical',
+    layout_width: '320dp',
+    layout_height: 'wrap_content',
+    padding: '32dp',
+    gravity: 'center',
+    elevation: '12dp',
+    background: roundedRect(cardColor, 48),
+
+    {
+      TextView,
+      text: 'SAYNAA COUNTER',
+      textSize: '13sp',
+      textStyle: 'bold',
+      textColor: textMuted,
+      layout_marginBottom: '24dp',
+      letterSpacing: 0.1
+    },
+    
+    {
+      TextView,
+      id: 'CounterText',
+      text: '0',
+      textSize: '84sp',
+      textStyle: 'bold',
+      textColor: textMain,
+      layout_marginBottom: '40dp'
+    },
+    
+    {
+      # Controls Row
+      LinearLayout,
+      orientation: 'horizontal',
+      layout_width: 'match_parent',
+      layout_height: 'wrap_content',
+      gravity: 'center',
+
+      {
+        Button,
+        id: 'minus',
+        text: '−',
+        textSize: '28sp',
+        layout_width: '72dp',
+        layout_height: '64dp',
+        background: roundedRect(accentRed, 32),
+        textColor: '#FFFFFF',
+        stateListAnimator: null,
+      },
+      
+      {
+        Button,
+        text: 'Reset',
+        textSize: '16sp',
+        layout_width: '88dp',
+        layout_height: '64dp',
+        layout_marginStart: '12dp',
+        layout_marginEnd: '12dp',
+        background: roundedRect('#21262D', 32),
+        textColor: textMain,
+        stateListAnimator: null,
+        onClick: function(v)
+          counter = 0
+          updateCounter()
+          toast("Counter Reset")
+        end
+      },
+      
+      {
+        Button,
+        id: 'plus',
+        text: '+',
+        textSize: '26sp',
+        layout_width: '72dp',
+        layout_height: '64dp',
+        background: roundedRect(accentBlue, 32),
+        textColor: '#FFFFFF',
+        stateListAnimator: null,
+      }
+    }
+  }
+}
+
+assert(activity != null, 'activity is null')
+
+root = loadlayout.loadlayout(_module, CounterUI)
+assert(root != null, 'loadlayout returned null')
+
+function onCreate(bundle)
+  activity.setContentView(root)
+  updateCounter()
+  
+  # without interface
+  plus.setOnClickListener({
+    onClick: function(view)
+        counter = counter + 1
+        updateCounter()
+    end
+  })
+  
+  # using interface
+  minus.setOnClickListener(View.OnClickListener({
+    onClick: function(view)
+        counter = counter - 1
+        updateCounter()
+    end
+  }))
+end

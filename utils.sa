@@ -1,0 +1,179 @@
+import Zip, path, os, io, compile, package
+
+function listPath(dir)
+  list = []
+  for i in path.listdir(dir) do
+    list.append({type: i.type, path: i.path, name: i.name})
+  end
+  return list
+end
+
+// treeFolder("/path/assets")
+function treeFolder(_path)
+  _name = _path.split("/")[-1]
+  ret = {
+    name: _name,
+    path: _path
+  }
+  
+  if path.isdir(_path) then
+    ret.type = "directory"
+    tree = []
+    list = listPath(_path)
+    for i in list do
+      if i.type == "directory" then
+        tree.append(treeFolder(i.path))
+      else
+        tree.append({
+          name: i.name,
+          path: i.path,
+          type: "File",
+          tree: null
+        })
+      end
+    end
+    
+    ret.tree = tree
+  else
+    ret.type = "file"
+    ret.tree = null
+  end
+
+  return ret
+end
+
+
+function addZipHelper(zip, location, map)
+  if map.type == "directory" then
+    children = map.tree
+    if children is List then
+      for i in children do
+        if i is Map then
+          _path = location + "/" + i.name
+          if i.type == "directory" then
+            addZipHelper(zip, _path, i)
+          else
+            zip.write(i.path, _path)
+          end
+        end
+      end
+    end
+  else
+    zip.write(map.path, location + "/" + map.name)
+  end
+end
+
+// ziplocation: can null
+function addZipFolder(zippath, ziplocation, foldertozip)
+  z = Zip.ZipFile(zippath, "a")
+  map = treeFolder(foldertozip)
+  addZipHelper(z, ziplocation, map)
+  z.close()
+end
+
+function getProjects(dir)
+  projects = []
+  for i in path.listdir(dir) do
+    if i.type == "directory" then
+        for j in path.listdir(i.path) do
+          if j.name == "app.cfg" then
+            projects.append(i.path)
+          end
+        end
+    end
+  end
+  return projects
+end
+
+function getAppData(projects)
+  data = {}
+  index = 0
+  for path in projects do
+    cfg = package.load(path + "/app.cfg")
+    data[index] = {
+      appname : cfg.app.name,
+      appicon : path .. "/" .. cfg.app.icon,
+      appversion : "Version: " .. cfg.app.versionName,
+      package : "Package name: " .. cfg.app.package
+    }
+
+    index += 1
+  end
+  
+  return data
+end
+
+function extractFile(zipFile, FileToExtract, PathToSave)
+  z = Zip.ZipFile(zipFile, "r")
+  data = z.read(FileToExtract)
+  writeFile(PathToSave, data)
+end
+
+function readFile(file)
+  r = io.open(file, "r")
+  content = r.read()
+  r.close()
+  return content
+end
+
+function writeFile(file, content)
+  r = io.open(file, "w")
+  r.write(content)
+  r.close()
+end
+
+function compileCodeHelper(map)
+  if map.type == "directory" then
+    children = map.tree
+    if children is List then
+      for i in children do
+        if i is Map then
+          if i.type == "directory" then
+            compileCodeHelper(i)
+          else
+            if (i.name.endswith(".sa") or i.name.endswith(".cfg") or i.name.endswith(".ly")) then
+              compile.Compile(readFile(i.path)).save(i.path)
+            end
+          end
+        end
+      end
+    end
+  else
+    error("Hey Something Wrong")
+    //compile.Compile(readFile(map.path)).save(map.path)
+  end
+end
+
+function compileCode(frompath, topath)
+  if (not path.exists(topath))
+    os.mkdir(topath)
+  end
+
+  if not (path.isdir(frompath) and path.isdir(frompath)) then
+    error("compile failed")
+    return
+  end
+
+  cmd = 'cp -r "' .. frompath .. '/"* "' .. topath .. '"'
+  os.system("cp -r $cmd")
+  map = treeFolder(topath)
+  compileCodeHelper(map)
+end
+
+function buildProject(root, name, pkg)
+  project = root + "/" + name
+  if path.exists(project) then
+    return false
+  end
+
+  os.mkdir(project)
+  Zip.ZipFile("template.zip", "r").extractall(project)
+  appcfg = project + "/app.cfg"
+  
+  content = readFile(appcfg)
+  content = content.replace("</>AppName</>", name)
+  content = content.replace("</>PackageName</>", pkg)
+  writeFile(appcfg, content)
+
+  return true
+end

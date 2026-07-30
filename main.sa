@@ -1,0 +1,314 @@
+import "android.widget.*"
+import "androidx.drawerlayout.widget.*"
+import "androidx.cardview.widget.*"
+import "android.view.*"
+import "android.text.*"
+import "android.os.*"
+import "android.graphics.*"
+import "com.android.saynaa.*"
+import "com.android.saynaa.adapter.*"
+import "android.content.*"
+import "android.net.*"
+import "android.graphics.*"
+import "android.graphics.drawable.*"
+import "android.app.AlertDialog"
+import "android.app.*"
+
+activity.getActionBar().hide();
+activity.getWindow().setStatusBarColor(Color.parseColor("#FF2196F3"));
+activity.getWindow().getDecorView().setSystemUiVisibility(0);
+
+result = 0
+resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+
+if resourceId > 0 then
+  result = activity.getResources().getDimensionPixelSize(resourceId);
+end
+
+function toast(msg)
+	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+end
+
+# Helper function to generate smooth, modern rounded backgrounds dynamically
+function roundedRect(colorHex, radius)
+  d = GradientDrawable()
+  d.setShape(GradientDrawable.RECTANGLE)
+  d.setCornerRadius(radius)
+  d.setColor(Color.parseColor(colorHex))
+  return d
+end
+
+drawerData = [
+  {
+    title: 'Settings',
+    icon: 'icon/ic_cog.png',
+    callback: function()
+    end
+    
+  },
+  {
+    title: 'Delete',
+    icon: 'icon/ic_delete.png',
+    callback: function()
+    end
+  },
+  {
+    title: 'Contact',
+    icon: 'icon/ic_message_processing.png',
+    callback: function()
+    end
+  },
+  {
+    title:'Downloads',
+    icon: 'icon/ic_download.png',
+    callback: function()
+    end
+  },
+  {
+    title: 'Share',
+    icon: 'icon/ic_share_variant.png',
+    callback: function()
+    end
+  },
+  {
+    title: 'Exit',
+    icon: 'icon/ic_power.png',
+    callback: function()
+      activity.finish()
+    end
+  },
+]
+
+Layout = {
+  DrawerLayout,
+  id: "mDrawer",
+  load("main.ly"),
+  load("drawer.ly")
+}
+
+assert(activity != null, 'activity is null')
+
+root = loadlayout(activity, Layout)
+assert(root != null, 'loadlayout returned null')
+activity.setContentView(root)
+
+import utils, permissions
+saynaadir = activity.getSaynaaExtDir()
+projects = utils.getProjects(saynaadir)
+appData = utils.getAppData(projects)
+
+//utils.compileCode("/storage/emulated/0/.SaynaaIDE/asmo", "/storage/emulated/0/.SaynaaIDE/asmo_bin")
+
+permissions.requestStoragePermission(activity)
+
+function newProject()
+  callback = function (name, pkg)
+    if(utils.buildProject(saynaadir, name, pkg))
+      saynaadir = activity.getSaynaaExtDir()
+      projects = utils.getProjects(saynaadir)
+      appData = utils.getAppData(projects)
+      app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
+      app_list.setAdapter(app_adapter)
+    end
+  end
+  showCreateAppDialog(activity, callback)
+end
+
+function onKeyDown(c,e)
+  if c==4 then
+    if mDrawer.isDrawerOpen(3) then
+      mDrawer.closeDrawer(3)
+      return true
+    end
+  end
+end
+
+function onCreate(arg1)
+  drawer_adapter = SaynaaAdapter(activity, load("items.ly"), drawerData)
+  drawer_list.setAdapter(drawer_adapter)
+  drawer_list.setOnItemClickListener(({
+    onItemClick: function(parent, view, position, id)
+      callback = drawerData[position].callback
+      if type(callback) == "Closure" then
+        callback()
+      end
+    end
+  }))
+  
+  app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
+  app_list.setAdapter(app_adapter)
+  app_list.setOnItemClickListener(({
+    onItemClick: function(parent, view, position, id)
+      b = Bundle()
+      b.putString('project', projects[position])
+      activity.newActivity("main2", b)
+    end
+  }))
+  
+  refresh.setOnClickListener({
+    onClick: function(v)
+      saynaadir = activity.getSaynaaExtDir()
+      projects = utils.getProjects(saynaadir)
+      appData = utils.getAppData(projects)
+      app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
+      app_list.setAdapter(app_adapter)
+    end
+  })
+  
+  pop=PopupMenu(activity, btnmenu)
+  menu=pop.getMenu()
+  
+  menu.add(0, 0, 0, "New Project")
+  menu.add(0, 1, 0, "About")
+  
+  pop.setOnMenuItemClickListener({
+    onMenuItemClick: function(item)
+        id = item.getItemId()
+        if id == 0 then
+          pop.hide();
+          newProject()
+        end
+        return true
+    end
+  })
+  
+  btnmenu.setOnClickListener({
+    onClick: function(v)
+     pop.show();
+    end
+  })
+  
+  add.setOnClickListener({
+    onClick: function(v)
+      newProject()
+    end
+  })
+
+  btn.setOnClickListener({
+    onClick: function(v)
+     mDrawer.openDrawer(3)
+    end
+  })
+end
+
+
+
+function showCreateAppDialog(context, callback)
+  dialog = Dialog(context);
+
+  root = LinearLayout(context);
+  root.setOrientation(LinearLayout.VERTICAL);
+  root.setPadding(45, 35, 45, 30);
+
+  card = GradientDrawable();
+  card.setColor(Color.WHITE);
+  card.setCornerRadius(45);
+
+  root.setBackground(card);
+
+  title = TextView(context);
+  title.setText("Create New App");
+  title.setTextSize(22);
+  title.setTextColor(Color.BLACK);
+  title.setPadding(0, 0, 0, 25);
+
+  appName = EditText(context);
+  appName.setHint("App name");
+  appName.setTextSize(16);
+  appName.setSingleLine(true);
+  appName.setPadding(25, 0, 25, 0);
+
+  packageName = EditText(context);
+  packageName.setHint("Package name");
+  packageName.setText("com.example.myapp");
+  packageName.setTextSize(16);
+  packageName.setSingleLine(true);
+  packageName.setPadding(25, 0, 25, 0);
+
+  inputParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 65);
+  inputParams.setMargins(0, 0, 0, 18);
+
+  root.addView(title);
+  root.addView(appName, inputParams);
+  root.addView(packageName, inputParams);
+
+  buttons = LinearLayout(context);
+  buttons.setGravity(Gravity.RIGHT);
+  buttons.setPadding(0, 20, 0, 0);
+
+  cancel = TextView(context);
+  cancel.setText("Cancel");
+  cancel.setTextSize(16);
+
+  cancel.setTextColor(Color.GRAY);
+  cancel.setGravity(Gravity.CENTER);
+  cancel.setPadding(35, 20, 35, 20);
+  cancel.setOnClickListener({
+    onClick: function(v)
+     dialog.dismiss()
+    end
+  })
+
+  create = TextView(context);
+  create.setText("Create");
+  create.setTextSize(16);
+  create.setTextColor(Color.rgb(30, 100, 220));
+  create.setGravity(Gravity.CENTER);
+  create.setPadding(35, 20, 35, 20);
+  
+  create.setOnClickListener({
+    onClick: function(v)
+      name = appName.getText().strip();
+      pkg = packageName.getText().strip();
+
+      if (name == "") then
+        appName.setError("Enter app name");
+        return;
+      end
+
+      if (pkg == "") then
+        packageName.setError("Enter package name");
+        return;
+      end
+      
+      dialog.dismiss();
+      if type(callback) == "Closure" then
+        callback(name, pkg)
+      end
+    end
+  })
+
+  buttons.addView(cancel);
+  buttons.addView(create);
+
+  root.addView(buttons);
+
+  dialog.setContentView(root);
+
+  // Close when tapping transparent area
+  dialog.setCanceledOnTouchOutside(true);
+  dialog.setCancelable(true);
+  dialog.show();
+
+  window = dialog.getWindow();
+  if (window != null)
+    // Remove default dialog background
+    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+
+    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+    lp = window.getAttributes();
+    lp.dimAmount = 0.4; // dark transparent background
+    window.setAttributes(lp);
+
+    // Remove dialog system padding
+    window.getDecorView().setPadding(0, 0, 0, 0);
+
+
+    params = window.getAttributes();
+    params.width = (context.getResources().getDisplayMetrics().widthPixels * 0.88);
+    params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+    params.gravity = Gravity.CENTER;
+
+    window.setAttributes(params);
+    end
+end
