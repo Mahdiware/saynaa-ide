@@ -1,4 +1,4 @@
-import Zip, path, os, io, compile, package
+import java, Zip, path, os, re, io, compile, package
 
 function listPath(dir)
   list = []
@@ -176,4 +176,33 @@ function buildProject(root, name, pkg)
   writeFile(appcfg, content)
 
   return true
+end
+
+function is_invalid_package(package_name)
+  match = re.fullmatch('[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+', package_name)
+  return match is Null
+end
+
+function createDialog(context, view)
+  style = java.bindClass('android.R$style')
+  AlertDialog = java.bindClass("android.app.AlertDialog")
+  Gravity = java.bindClass("android.view.Gravity")
+  WindowManager = java.bindClass("android.view.WindowManager")
+
+  builder = AlertDialog.Builder(context, style.Theme_DeviceDefault_Light_Dialog_NoActionBar)  
+  builder.setView(view)  
+  dialog = builder.create()  
+  dialog.setCancelable(true);  
+  dialog.show();  
+    
+  window = dialog.getWindow();  
+  if (window != null)  
+    params = window.getAttributes();  
+    params.width = context.getResources().getDisplayMetrics().widthPixels * 0.88;  
+    params.height = WindowManager.LayoutParams.WRAP_CONTENT;  
+    params.gravity = Gravity.CENTER;  
+    window.setAttributes(params);  
+  end
+  
+  return dialog
 end

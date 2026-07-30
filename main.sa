@@ -92,26 +92,97 @@ root = loadlayout(activity, Layout)
 assert(root != null, 'loadlayout returned null')
 activity.setContentView(root)
 
-import utils, permissions
+import os, utils, permissions
 saynaadir = activity.getSaynaaExtDir()
-projects = utils.getProjects(saynaadir)
-appData = utils.getAppData(projects)
-
-//utils.compileCode("/storage/emulated/0/.SaynaaIDE/asmo", "/storage/emulated/0/.SaynaaIDE/asmo_bin")
+projects = null
+appData = null
 
 permissions.requestStoragePermission(activity)
 
-function newProject()
-  callback = function (name, pkg)
-    if(utils.buildProject(saynaadir, name, pkg))
-      saynaadir = activity.getSaynaaExtDir()
-      projects = utils.getProjects(saynaadir)
-      appData = utils.getAppData(projects)
-      app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
-      app_list.setAdapter(app_adapter)
+function refreshAppList()
+  projects = utils.getProjects(saynaadir)
+  appData = utils.getAppData(projects)
+  app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
+  app_list.setAdapter(app_adapter)
+end
+
+function deleteProject(index)
+  project_path = projects[index]
+  project_name = appData[index].appname
+
+  ll = LoadLayout(activity)
+  objects = ll.getObjects()
+  dialog = utils.createDialog(activity, ll.createView(load("deleteproject.ly")))
+
+  delete = objects.delete 
+  cancel = objects.cancel
+  content = objects.content
+  content.setText( "Are you sure you want to delete this project named '$project_name'?\n\nThis action cannot be undone.")
+
+  delete.setOnClickListener({
+    onClick: function(v)
+      if os.system("rm -r '$project_path'") == 0 then
+        refreshAppList()
+        toast("Project Deleted")
+      end
+      
+      dialog.dismiss();
     end
-  end
-  showCreateAppDialog(activity, callback)
+  })
+
+  cancel.setOnClickListener({
+    onClick: function(v)
+      dialog.dismiss()
+    end
+  })
+end
+
+function newProject()
+  ll = LoadLayout(activity)
+  objects = ll.getObjects()
+  dialog = utils.createDialog(activity, ll.createView(load("createproject.ly")))
+
+  create = objects.create
+  cancel = objects.cancel
+  appName = objects.appName
+  packageName = objects.packageName
+
+  create.setOnClickListener({
+    onClick: function(v)
+      name = appName.getText().strip();
+      pkg = packageName.getText().strip();
+
+      if (name == "") then
+        appName.setError("Enter app name");
+        return;
+      end
+
+      if (pkg == "") then
+        packageName.setError("Enter package name");
+        return;
+      end
+      
+      if utils.is_invalid_package(pkg) then
+        packageName.setError("Enter valid package name");
+        return;
+      end
+
+      if(utils.buildProject(saynaadir, name, pkg))
+        refreshAppList()
+        toast("Project Created")
+      else
+        toast("Project Creation failed!")
+      end
+    
+      dialog.dismiss();
+    end
+  })
+
+  cancel.setOnClickListener({
+    onClick: function(v)
+      dialog.dismiss()
+    end
+  })
 end
 
 function onKeyDown(c,e)
@@ -123,20 +194,19 @@ function onKeyDown(c,e)
   end
 end
 
-function onCreate(arg1)
+function onCreate()
   drawer_adapter = SaynaaAdapter(activity, load("items.ly"), drawerData)
   drawer_list.setAdapter(drawer_adapter)
   drawer_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
       callback = drawerData[position].callback
-      if type(callback) == "Closure" then
+      if callback is Closure then
         callback()
       end
     end
   }))
   
-  app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
-  app_list.setAdapter(app_adapter)
+  refreshAppList();
   app_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
       b = Bundle()
@@ -145,13 +215,16 @@ function onCreate(arg1)
     end
   }))
   
+  app_list.setOnItemLongClickListener(({
+    onItemLongClick: function(parent, view, position, id)
+      deleteProject(position)
+      return true
+    end
+  }))
+  
   refresh.setOnClickListener({
     onClick: function(v)
-      saynaadir = activity.getSaynaaExtDir()
-      projects = utils.getProjects(saynaadir)
-      appData = utils.getAppData(projects)
-      app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
-      app_list.setAdapter(app_adapter)
+      refreshAppList()
     end
   })
   
@@ -189,126 +262,4 @@ function onCreate(arg1)
      mDrawer.openDrawer(3)
     end
   })
-end
-
-
-
-function showCreateAppDialog(context, callback)
-  dialog = Dialog(context);
-
-  root = LinearLayout(context);
-  root.setOrientation(LinearLayout.VERTICAL);
-  root.setPadding(45, 35, 45, 30);
-
-  card = GradientDrawable();
-  card.setColor(Color.WHITE);
-  card.setCornerRadius(45);
-
-  root.setBackground(card);
-
-  title = TextView(context);
-  title.setText("Create New App");
-  title.setTextSize(22);
-  title.setTextColor(Color.BLACK);
-  title.setPadding(0, 0, 0, 25);
-
-  appName = EditText(context);
-  appName.setHint("App name");
-  appName.setTextSize(16);
-  appName.setSingleLine(true);
-  appName.setPadding(25, 0, 25, 0);
-
-  packageName = EditText(context);
-  packageName.setHint("Package name");
-  packageName.setText("com.example.myapp");
-  packageName.setTextSize(16);
-  packageName.setSingleLine(true);
-  packageName.setPadding(25, 0, 25, 0);
-
-  inputParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 65);
-  inputParams.setMargins(0, 0, 0, 18);
-
-  root.addView(title);
-  root.addView(appName, inputParams);
-  root.addView(packageName, inputParams);
-
-  buttons = LinearLayout(context);
-  buttons.setGravity(Gravity.RIGHT);
-  buttons.setPadding(0, 20, 0, 0);
-
-  cancel = TextView(context);
-  cancel.setText("Cancel");
-  cancel.setTextSize(16);
-
-  cancel.setTextColor(Color.GRAY);
-  cancel.setGravity(Gravity.CENTER);
-  cancel.setPadding(35, 20, 35, 20);
-  cancel.setOnClickListener({
-    onClick: function(v)
-     dialog.dismiss()
-    end
-  })
-
-  create = TextView(context);
-  create.setText("Create");
-  create.setTextSize(16);
-  create.setTextColor(Color.rgb(30, 100, 220));
-  create.setGravity(Gravity.CENTER);
-  create.setPadding(35, 20, 35, 20);
-  
-  create.setOnClickListener({
-    onClick: function(v)
-      name = appName.getText().strip();
-      pkg = packageName.getText().strip();
-
-      if (name == "") then
-        appName.setError("Enter app name");
-        return;
-      end
-
-      if (pkg == "") then
-        packageName.setError("Enter package name");
-        return;
-      end
-      
-      dialog.dismiss();
-      if type(callback) == "Closure" then
-        callback(name, pkg)
-      end
-    end
-  })
-
-  buttons.addView(cancel);
-  buttons.addView(create);
-
-  root.addView(buttons);
-
-  dialog.setContentView(root);
-
-  // Close when tapping transparent area
-  dialog.setCanceledOnTouchOutside(true);
-  dialog.setCancelable(true);
-  dialog.show();
-
-  window = dialog.getWindow();
-  if (window != null)
-    // Remove default dialog background
-    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
-
-    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-    lp = window.getAttributes();
-    lp.dimAmount = 0.4; // dark transparent background
-    window.setAttributes(lp);
-
-    // Remove dialog system padding
-    window.getDecorView().setPadding(0, 0, 0, 0);
-
-
-    params = window.getAttributes();
-    params.width = (context.getResources().getDisplayMetrics().widthPixels * 0.88);
-    params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-    params.gravity = Gravity.CENTER;
-
-    window.setAttributes(params);
-    end
 end

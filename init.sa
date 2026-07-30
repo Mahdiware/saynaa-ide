@@ -1,9 +1,12 @@
 import java
 import os
 import package
-package.path.append(java.saynaadir)
-os.chdir(java.saynaadir)
-from loadlayout import loadlayout
+
+saynaadir = activity.getSaynaaDir()
+package.path.append("$saynaadir")
+os.chdir("$saynaadir")
+
+from loadlayout import LoadLayout, loadlayout
 
 # Classpath prefixes for fallback resolution
 classpath = ["java.lang."]
