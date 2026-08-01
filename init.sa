@@ -1,12 +1,11 @@
 import java
 import os
 import package
+from loadlayout import LoadLayout, loadlayout
 
 saynaadir = activity.getSaynaaDir()
 package.path.append("$saynaadir")
 os.chdir("$saynaadir")
-
-from loadlayout import LoadLayout, loadlayout
 
 # Classpath prefixes for fallback resolution
 classpath = ["java.lang."]
@@ -54,3 +53,5 @@ function loadDex(path)
     end
     return activity.loadDex(path)
 end
+
+loadDex(saynaadir .. "/libs/classes2.dex")

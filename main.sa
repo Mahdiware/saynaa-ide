@@ -29,6 +29,7 @@ function toast(msg)
 	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
 end
 
+
 # Helper function to generate smooth, modern rounded backgrounds dynamically
 function roundedRect(colorHex, radius)
   d = GradientDrawable()
@@ -41,38 +42,41 @@ end
 drawerData = [
   {
     title: 'Settings',
-    icon: 'icon/ic_cog.png',
+    icon: 'icons/ic_cog.png',
     callback: function()
     end
     
   },
   {
-    title: 'Delete',
-    icon: 'icon/ic_delete.png',
-    callback: function()
-    end
-  },
-  {
     title: 'Contact',
-    icon: 'icon/ic_message_processing.png',
+    icon: 'icons/ic_message_processing.png',
     callback: function()
+      intent = Intent(Intent.ACTION_VIEW)
+      intent.setData(Uri.parse("https://t.me/mahdiware"))
+      activity.startActivity(intent)
+      mDrawer.closeDrawer(3)
     end
   },
   {
     title:'Downloads',
-    icon: 'icon/ic_download.png',
+    icon: 'icons/ic_download.png',
     callback: function()
     end
   },
   {
     title: 'Share',
-    icon: 'icon/ic_share_variant.png',
+    icon: 'icons/ic_share_variant.png',
     callback: function()
+      intent = Intent(Intent.ACTION_SEND)
+      intent.setType("text/plain")
+      intent.putExtra(Intent.EXTRA_SUBJECT, "SaynaaIDE")
+      intent.putExtra(Intent.EXTRA_TEXT, "Check out SaynaaIDE on GitHub:\nhttps://github.com/mahdiware")
+      activity.startActivity(Intent.createChooser(intent, "Share via"))
     end
   },
   {
     title: 'Exit',
-    icon: 'icon/ic_power.png',
+    icon: 'icons/ic_power.png',
     callback: function()
       activity.finish()
     end
@@ -240,6 +244,9 @@ function onCreate()
         if id == 0 then
           pop.hide();
           newProject()
+        elif id == 1 then
+          pop.hide()
+          activity.newActivity("main3")
         end
         return true
     end

@@ -11,6 +11,7 @@ import "android.content.*"
 import "com.android.saynaa.*"
 import "android.graphics.*"
 import "android.graphics.drawable.*"
+import "android.app.ProgressDialog"
 
 import utils, apkbuilder
 
@@ -40,7 +41,7 @@ end
 function openFolder(_path)
   data = [
     {
-      icon: "icon/folder.png",
+      icon: "icons/folder.png",
       type: "folder",
       title: "../",
       path: _path,
@@ -48,10 +49,10 @@ function openFolder(_path)
     }
   ]
   for i in utils.listPath(_path) do
-    icon = "icon/file.png"
+    icon = "icons/file.png"
     type = "file"
     if i.type == "directory" then
-      icon = "icon/folder.png"
+      icon = "icons/folder.png"
       type = "folder"
     end
   
@@ -101,7 +102,7 @@ function onCreate(bundle)
   openfile = project .. "/main.sa"
   filename.setText("main.sa")
   editor.setText(utils.readFile(openfile))
-
+  
   redo.setOnClickListener({
     onClick: function(v)
       editor.redo();
@@ -207,9 +208,21 @@ function BuildApk()
     return
   end
   
-  cfg = package.load(project + "/app.cfg")
+  style = java.bindClass('android.R$style')
+  dlg = utils.createProgressDialog(activity);
+  dlg.setTitle("Compiling");
+  dlg.setMessage("Building...")
+  dlg.setMax(100);
+  dlg.show()
   
-  saynaadir = activity.getSaynaaExtDir()
-  apkbuilder.build(activity, cfg, project, saynaadir .. "/bin")
+  runner = Runnable(function()
+    cfg = package.loadfile(project + "/app.cfg")
+    saynaadir = activity.getSaynaaExtDir()
+    apkbuilder.build(activity, dlg, cfg, project, saynaadir .. "/bin")
+  end)
+  
+  thread = Thread(runner)
+  thread.start()
+  
   toast("successful apk builded")
 end

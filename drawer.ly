@@ -14,7 +14,7 @@ return {
       layout_height: "24%h",
       layout_width: "match_parent",
       scaleType: "fitXY",
-      src: "orange.png",
+      src: "background.jpg",
     },
     {
       ListView,
