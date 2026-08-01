@@ -223,6 +223,4 @@ function BuildApk()
   
   thread = Thread(runner)
   thread.start()
-  
-  toast("successful apk builded")
 end
