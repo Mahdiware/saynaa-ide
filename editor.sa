@@ -1,0 +1,353 @@
+import "android.widget.*"
+import "androidx.drawerlayout.widget.*"
+import "androidx.cardview.widget.*"
+import "android.view.*"
+import "android.text.*"
+import "android.os.*"
+import "android.graphics.*"
+import "com.android.saynaa.*"
+import "com.android.saynaa.adapter.*"
+import "android.content.*"
+import "com.android.saynaa.*"
+import "android.graphics.*"
+import "android.graphics.drawable.*"
+import "android.app.ProgressDialog"
+import "io.github.rosemoe.sora.widget.schemes.SchemeDarcula"
+import "com.android.saynaa.utils.FileUtil"
+import utils.file_utils, utils.ui_utils, utils.dialog_utils, utils.apkbuilder
+
+activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+activity.getActionBar().hide()
+
+# global variables
+openfile = null 
+project = null
+parentDirectory = []
+rootpath = null
+AdapterData = null
+result = 0
+resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+
+if resourceId > 0 then
+  result = activity.getResources().getDimensionPixelSize(resourceId);
+end
+
+function toast(msg)
+	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+end
+
+function fileMenuBuilder(path)
+  callback = {
+    onMenuItemClick: function(item)
+      id = item.getItemId()
+      if id == 0 then
+        FileUtil.deleteRecursive(path)
+        refreshDrawerList()
+      elif id == 1 then
+        toast("TODO")
+      elif id == 2 then
+        file_utils.copyToClipboard(activity, path.getName())
+      elif id == 3 then
+        file_utils.copyToClipboard(activity, path.getAbsolutePath())
+      end
+      return true
+    end
+  }
+
+  return {
+    visibility: "visible",
+    onClick: function(v)
+      pop=PopupMenu(activity, v)
+      menu=pop.getMenu()
+  
+      menu.add(0, 0, 0, "Delete")
+      menu.add(0, 1, 0, "Rename")
+      menu.add(0, 2, 0, "Copy name")
+      menu.add(0, 3, 0, "Copy path")
+      
+      pop.setOnMenuItemClickListener(callback)
+      
+      pop.show();
+    end
+  }
+end
+
+function openFolder(_path)
+  data = [
+    {
+      icon: "icons/folder.png",
+      type: "folder",
+      title: "../",
+      path: _path,
+      subtitle: "Return to parent directory"
+    }
+  ]
+  for i in FileUtil.listDir(_path) do
+    icon = "icons/file.png"
+    type = "file"
+    title = i.getName()
+
+    if i.isDirectory() then
+      icon = "icons/folder.png"
+      type = "folder"
+    end
+
+    path = i.getAbsolutePath()
+    modified = FileUtil.formatDate(i.lastModified(), "dd MMM yyyy, hh:mm a")
+    filemenu = fileMenuBuilder(i)
+
+    data.append({icon: icon, type: type, title: title, subtitle: modified, path: path, filemenu: filemenu})
+  end
+  return data
+end
+
+function createDirectory()
+  parent = null
+  if parentDirectory is List and parentDirectory.length then
+    parent = parentDirectory[-1]
+  end
+
+  ll = LoadLayout(activity)
+  objects = ll.getObjects()
+  dialog = dialog_utils.createDialog(activity, theme.getDialogTheme(), ll.createView(load("utils/layout/createfolder.ly")))
+
+  name = objects.name
+  cancel = objects.cancel
+  file = objects.file
+  folder = objects.folder
+  
+  file.setOnClickListener({
+    onClick: function(v)
+      value = name.getText()
+      
+      if (value == "") then
+        name.setError("Enter file name");
+        return;
+      end
+      
+      if parent == null then
+        toast("error Parent is null")
+      end
+      
+      if file_utils.createFile(parent .. "/" .. value) then
+        refreshDrawerList()
+      end
+      dialog.dismiss()
+    end
+  })
+  
+  
+  folder.setOnClickListener({
+    onClick: function(v)
+      value = name.getText()
+      
+      if (value == "") then
+        name.setError("Enter folder name");
+        return;
+      end
+
+      if parent == null then
+        toast("error Parent is null")
+      end
+      
+      if file_utils.createDirectory(parent .. "/" .. value) then
+        refreshDrawerList()
+      end
+
+      dialog.dismiss()
+    end
+  })
+  
+  cancel.setOnClickListener({
+    onClick: function(v)
+      dialog.dismiss()
+    end
+  })
+end
+
+
+assert(activity != null, 'activity is null')
+
+Layout = {
+  DrawerLayout,
+  id: "mDrawer",
+  load("editor_layout.ly"),
+  load("editor_drawer.ly")
+}
+
+root = loadlayout(activity, Layout)
+assert(root != null, 'loadlayout returned null')
+activity.setContentView(root)
+
+symbols = load("editor_symbols.ly")
+tmp_symbols = {}
+
+function onKeyDown(c,e)
+  if c==4 then
+    if mDrawer.isDrawerOpen(3) then
+      mDrawer.closeDrawer(3)
+      return true
+    end
+    if openfile != null
+      file_utils.writeFile(openfile, editor.getText())
+    end
+  end
+end
+
+function refreshDrawerList()
+  parent = parentDirectory[-1]
+  AdapterData = openFolder(parent)
+
+  adapter = SaynaaAdapter(activity, load("utils/layout/filemanager.ly"), AdapterData)
+  drawer_list.setAdapter(adapter)
+end
+
+function onCreate(bundle)
+  if bundle == null then
+    toast("bundle is null")
+    return
+  end
+  
+  project = bundle.getString("project")
+  name = bundle.getString("name")
+  title.setText(name)
+  
+
+  openfile = project .. "/main.sa"
+  filename.setText("main.sa")
+  editor.setText(file_utils.readFile(openfile))
+  
+  buttonBarStyle = activity.getResources().getIdentifier("android:attr/buttonBarButtonStyle", null, null)
+  
+  for i in symbols do
+    tmp_symbols.setattr(i.title, i.insert)
+
+    btn = Button(activity, null, buttonBarStyle)
+    btn.setTextColor(0xffffffff)
+    btn.setText(i.title)
+    btn.setOnClickListener({
+      onClick: function(v)
+        editor.pasteText(tmp_symbols.getattr(v.getText()));
+      end
+    })
+    symbolBar.addView(btn)
+  end
+  
+  redo.setOnClickListener({
+    onClick: function(v)
+      editor.redo();
+    end
+  })
+
+  btn.setOnClickListener({
+    onClick: function(v)
+     mDrawer.openDrawer(3)
+    end
+  })
+
+  undo.setOnClickListener({
+    onClick: function(v)
+      editor.undo();
+    end
+  })
+
+  run.setOnClickListener({
+    onClick: function(v)
+      file_utils.writeFile(openfile, editor.getText())
+      activity.newActivity(project .. "/main")
+    end
+  })
+  
+  drawer_add.setOnClickListener({
+    onClick: function(v)
+      createDirectory()
+    end
+  })
+  
+  pop=PopupMenu(activity, btnmenu)
+  menu=pop.getMenu()
+  
+  menu.add(0, 0, 0, "Build")
+  menu.add(0, 1, 0, "About")
+  
+  pop.setOnMenuItemClickListener({
+    onMenuItemClick: function(item)
+        id = item.getItemId()
+        if id == 0 then
+          BuildApk()
+        else
+          activity.newActivity("about")
+        end
+        return true
+    end
+  })
+  
+  btnmenu.setOnClickListener({
+    onClick: function(v)
+     pop.show();
+    end
+  })
+  
+  save.setOnClickListener({
+    onClick: function(v)
+     file_utils.writeFile(openfile, editor.getText())
+     toast("Save successful")
+    end
+  })
+  
+  rootpath = project
+  parentDirectory = [rootpath]
+  refreshDrawerList()
+
+  drawer_list.setOnItemClickListener(({
+    onItemClick: function(parent, view, position, id)
+      data = AdapterData[position]
+      
+      if data.type == "file" then
+        name = data.title
+        if name.endswith(".sa") or name.endswith(".cfg") or name.endswith(".ly") then
+          file_utils.writeFile(openfile, editor.getText())
+          openfile = data.path
+          filename.setText(name)
+          editor.setText(file_utils.readFile(openfile))
+          mDrawer.closeDrawer(3)
+        end
+      else
+        currect = parentDirectory[-1]
+        if data.title == "../" and currect == rootpath then
+          return
+        end
+        if data.title == "../" then
+          parentDirectory.pop()
+        else
+          goto = currect + "/" + data.title
+          parentDirectory.append(goto)
+        end
+        refreshDrawerList()
+      end
+    end
+  }))
+end
+
+function BuildApk()
+  if project == null
+    toast("something wrong!")
+    return
+  end
+  
+  style = java.bindClass('android.R$style')
+  dlg = dialog_utils.createProgressDialog(activity, theme.getDialogTheme());
+  dlg.setTitle("Compiling");
+  dlg.setMessage("Building...")
+  dlg.setMax(100);
+  dlg.show()
+  
+  runner = Runnable(function()
+    cfg = package.loadfile(project + "/app.cfg")
+    saynaadir = activity.getSaynaaExtDir()
+    apkbuilder.build(activity, dlg, cfg, project, saynaadir .. "/bin")
+  end)
+  
+  thread = Thread(runner)
+  thread.start()
+end

@@ -1,0 +1,68 @@
+return {
+  LinearLayout,
+  layout_width: "match_parent",
+  layout_height: "wrap_content",
+  orientation: "vertical",
+  paddingLeft: "22dp",
+  paddingTop: "18dp",
+  paddingRight: "22dp",
+  paddingBottom: "15dp",
+
+  {
+    TextView,
+    layout_width: "match_parent",
+    layout_height: "wrap_content",
+    text: "Import Project",
+    textSize: "22sp",
+    paddingBottom: "12dp",
+  },
+
+  {
+    TextView,
+    id: "content",
+    layout_width: "match_parent",
+    layout_height: "wrap_content",
+    text: "",
+    textSize: "16sp",
+    lineSpacingExtra: "2dp",
+  },
+
+  {
+    LinearLayout,
+    layout_width: "match_parent",
+    layout_height: "wrap_content",
+    orientation: "horizontal",
+    gravity: "right",
+    paddingTop: "18dp",
+
+    {
+      TextView,
+      id: "cancel",
+      layout_width: "wrap_content",
+      layout_height: "wrap_content",
+      text: "Cancel",
+      textSize: "16sp",
+      textColor: "#808080",
+      gravity: "center",
+      paddingLeft: "18dp",
+      paddingTop: "10dp",
+      paddingRight: "18dp",
+      paddingBottom: "10dp",
+    },
+
+    {
+      TextView,
+      id: "ok",
+      layout_width: "wrap_content",
+      layout_height: "wrap_content",
+      text: "Import",
+      textSize: "16sp",
+      textColor: "#1E64DC",
+      gravity: "center",
+      paddingLeft: "18dp",
+      paddingTop: "10dp",
+      paddingRight: "18dp",
+      paddingBottom: "10dp",
+    },
+  },
+}

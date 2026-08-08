@@ -1,0 +1,50 @@
+import java
+
+Build = java.bindClass('android.os.Build')
+Uri = java.bindClass('android.net.Uri')
+Intent = java.bindClass('android.content.Intent')
+Settings = java.bindClass('android.provider.Settings')
+
+
+function requestStoragePermission(context)
+  Environment = java.bindClass('android.os.Environment')
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R and !Environment.isExternalStorageManager())
+    intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+    intent.setData(Uri.parse("package:" + context.getPackageName()))
+    context.startActivity(intent)
+  end
+end
+
+function canInstallApk(context)
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) then
+    return context.getPackageManager().canRequestPackageInstalls();
+  end
+  // Android 7.1 and below
+  return true;
+end
+
+function requestInstallPermission(context)
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O and !canInstallApk(context)) then
+      intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+      intent.setData(Uri.parse("package:" + context.getPackageName()))
+      context.startActivity(intent)
+  end
+end
+
+function installApk(context, apkFile)
+  File = java.bindClass('java.io.File')
+  file = File(apkFile);
+  intent = Intent(Intent.ACTION_VIEW);
+  intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+  uri = null;
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) then
+    FileProvider = java.bindClass('androidx.core.content.FileProvider')
+    uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file);
+  else
+    uri = Uri.fromFile(file);
+  end
+
+  intent.setDataAndType(uri, "application/vnd.android.package-archive");
+  context.startActivity(intent);
+end

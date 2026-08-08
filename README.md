@@ -22,7 +22,6 @@ SaynaaIDE is a lightweight Android IDE for developing applications with the **Sa
 
 - Android 5.0 (API 21) or higher
 - Storage permission (for projects)
-- ARM or ARM64 device
 
 ## Installation
 

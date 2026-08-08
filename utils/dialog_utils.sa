@@ -1,0 +1,48 @@
+import java
+
+function createDialog(context, theme, view)  
+  AlertDialog = java.bindClass("android.app.AlertDialog")
+  Gravity = java.bindClass("android.view.Gravity")
+  WindowManager = java.bindClass("android.view.WindowManager")
+
+  builder = AlertDialog.Builder(context, theme)  
+  builder.setView(view)  
+  dialog = builder.create()  
+  dialog.setCancelable(true);  
+  dialog.show();  
+    
+  window = dialog.getWindow();  
+  if (window != null)  
+    params = window.getAttributes();  
+    params.width = context.getResources().getDisplayMetrics().widthPixels * 0.88;  
+    params.height = WindowManager.LayoutParams.WRAP_CONTENT;  
+    params.gravity = Gravity.CENTER;  
+    window.setAttributes(params);  
+  end
+  
+  return dialog
+end
+
+  
+function createProgressDialog(context, theme)  
+  ProgressDialog = java.bindClass("android.app.ProgressDialog")
+  Gravity = java.bindClass("android.view.Gravity")
+  WindowManager = java.bindClass("android.view.WindowManager")
+
+  dialog = ProgressDialog(context, theme);
+  dialog.setTitle("Compiling");
+  dialog.setMessage("Building...")
+  dialog.setMax(100);
+  dialog.show()
+
+  window = dialog.getWindow();  
+  if (window != null)  
+    params = window.getAttributes();  
+    params.width = context.getResources().getDisplayMetrics().widthPixels * 0.88;  
+    params.height = WindowManager.LayoutParams.WRAP_CONTENT;  
+    params.gravity = Gravity.CENTER;  
+    window.setAttributes(params);  
+  end
+  
+  return dialog
+end

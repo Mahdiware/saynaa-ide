@@ -1,0 +1,11 @@
+import re
+
+function is_invalid_package(package_name)
+  match = re.fullmatch('[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+', package_name)
+  return match is Null
+end
+
+function is_invalid_permission(permission)
+  match = re.fullmatch('[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\.[A-Za-z][A-Za-z0-9_]*', permission)
+  return match is Null
+end

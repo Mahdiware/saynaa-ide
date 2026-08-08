@@ -1,0 +1,34 @@
+import java
+
+GradientDrawable = java.bindClass("android.graphics.drawable.GradientDrawable")
+
+function roundBg(color, radius)
+  bg = GradientDrawable()
+  bg.setColor(color)
+  bg.setCornerRadius(radius)
+  return bg
+end
+
+function strokeBg(color, stroke, strokeColor, radius)
+  bg = GradientDrawable()
+  bg.setColor(color)
+  bg.setCornerRadius(radius)
+  bg.setStroke(stroke, strokeColor)
+  return bg
+end
+
+function circleBg(color)
+  bg = GradientDrawable()
+  bg.setColor(color)
+  bg.setShape(GradientDrawable.OVAL)
+  return bg
+end
+
+function strokeCircleBg(color, stroke, strokeColor)
+  bg = GradientDrawable()
+  bg.setColor(color)
+  bg.setShape(GradientDrawable.OVAL)
+  bg.setStroke(stroke, strokeColor)
+  return bg
+end
+

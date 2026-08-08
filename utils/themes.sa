@@ -1,0 +1,150 @@
+import java
+
+mystyle = java.bindClass('com.android.saynaa.R$style')
+R_style = java.bindClass('android.R$style')
+R_attr = java.bindClass('android.R$attr')
+TypedValue = java.bindClass('android.util.TypedValue')
+Configuration = java.bindClass("android.content.res.Configuration")
+Color = java.bindClass("android.graphics.Color")
+context = java.context
+
+lightmode = {
+  secondary: 0xFF666666,
+  background: 0xFFFFFFFF,
+  cards: 0xFFF5F5F5,
+  text: 0xFF000000,
+}
+
+darkmode = {
+  secondary: 0xFFAAAAAA,
+  background: 0xFf121212,
+  cards: 0xFF1E1E1E,
+  text: 0xFFFFFFFF,
+}
+
+class ThemeManager
+  function _init(context)
+    this.context = context
+    this.isdarkmode = this.isDarkMode()
+    
+    this.styleLight = mystyle.LightTheme6
+    this.styleDark = mystyle.DarkTheme2
+    
+    this.dialogLight = R_style.Theme_DeviceDefault_Light_Dialog_NoActionBar
+    this.dialogDark = R_style.Theme_DeviceDefault_Dialog_NoActionBar
+  end
+  
+  // it return missing class attribute
+  // like: ThemeManager(context).missingattribute
+  function _getattr(name)
+    if this.isdarkmode then
+      result = darkmode.get(name)
+      if result != null then
+        return result
+      end
+    else
+     result = lightmode.get(name)
+      if result != null then
+        return result
+      end
+    end
+    
+    return this.getThemeAsName(name)
+  end
+  
+  function setDarkMode(dark)
+    this.context.setSharedData("darkmode", dark)
+    this.isdarkmode = dark
+  end
+  
+  function isDarkMode()
+    default = true
+    data = this.context.getSharedData("darkmode")
+    if data is Bool then
+      return data
+    end
+    
+    return default
+  end
+  
+  function  getDialogTheme()
+    if this.isdarkmode then
+      return this.dialogDark
+    else
+      return this.dialogLight
+    end
+  end
+  
+  function getTheme()
+    if this.isdarkmode then
+      return this.styleDark
+    else
+      return this.styleLight
+    end
+  end
+  
+  function getColor(attr)
+    value = TypedValue();
+    if this.context.getTheme().resolveAttribute(attr, value, true)
+      return value.data;
+    end
+    
+    return Color.TRANSPARENT;
+  end
+  
+  function getThemeAsName(name)  
+    value = TypedValue()  
+    attrId = this.context.getResources().getIdentifier(name, "attr", "android")  
+  
+    if this.context.getTheme().resolveAttribute(attrId, value, true) then  
+      return value.data  
+    end  
+    
+    return null  
+  end  
+  
+  function getDrawable(attr)
+    value = TypedValue();
+    if this.context.getTheme().resolveAttribute(attr, value, true)
+      return this.context.getDrawable(value.resourceId)
+    end
+    
+    return null;
+  end
+  
+  function getBoolean(attr)
+    value = TypedValue();
+    if this.context.getTheme().resolveAttribute(attr, value, true)
+      return value.data != 0
+    end
+    
+    return false;
+  end
+  
+  function getDimension(attr)
+    value = TypedValue();
+    if this.context.getTheme().resolveAttribute(attr, value, true)
+      return TypedValue.complexToDimensionPixelSize(value.data, this.context.getResources().getDisplayMetrics());
+    end
+    
+    return 0;
+  end
+  
+  function getResourceId(attr)
+    value = TypedValue();
+    if this.context.getTheme().resolveAttribute(attr, value, true)
+      return value.resourceId;
+    end
+    
+    return 0;
+  end
+ 
+  function isSystemDark()
+    return (this.context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+  end
+  
+  function applyTheme()
+    this.context.setTheme(this.getTheme())
+  end
+  
+end

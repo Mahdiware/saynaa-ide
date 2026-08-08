@@ -14,9 +14,9 @@ import "android.graphics.drawable.*"
 import "android.app.AlertDialog"
 import "android.app.*"
 
+import os, utils.file_utils, utils.dialog_utils, utils.validator, utils.permissions, utils.ui_utils
+
 activity.getActionBar().hide();
-activity.getWindow().setStatusBarColor(Color.parseColor("#FF2196F3"));
-activity.getWindow().getDecorView().setSystemUiVisibility(0);
 
 result = 0
 resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
@@ -29,21 +29,13 @@ function toast(msg)
 	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
 end
 
-
-# Helper function to generate smooth, modern rounded backgrounds dynamically
-function roundedRect(colorHex, radius)
-  d = GradientDrawable()
-  d.setShape(GradientDrawable.RECTANGLE)
-  d.setCornerRadius(radius)
-  d.setColor(Color.parseColor(colorHex))
-  return d
-end
-
 drawerData = [
   {
     title: 'Settings',
     icon: 'icons/ic_cog.png',
     callback: function()
+      activity.newActivity("settings")
+      mDrawer.closeDrawer(3)
     end
     
   },
@@ -86,8 +78,8 @@ drawerData = [
 Layout = {
   DrawerLayout,
   id: "mDrawer",
-  load("main.ly"),
-  load("drawer.ly")
+  load("main_layout.ly"),
+  load("main_drawer.ly")
 }
 
 assert(activity != null, 'activity is null')
@@ -96,7 +88,6 @@ root = loadlayout(activity, Layout)
 assert(root != null, 'loadlayout returned null')
 activity.setContentView(root)
 
-import os, utils, permissions
 saynaadir = activity.getSaynaaExtDir()
 projects = null
 appData = null
@@ -104,10 +95,58 @@ appData = null
 permissions.requestStoragePermission(activity)
 
 function refreshAppList()
-  projects = utils.getProjects(saynaadir)
-  appData = utils.getAppData(projects)
-  app_adapter = SaynaaAdapter(activity, load("applist.ly"), appData)
+  projects = file_utils.getProjects(saynaadir)
+  appData = file_utils.getAppData(projects)
+  app_adapter = SaynaaAdapter(activity, load("main_applist.ly"), appData)
   app_list.setAdapter(app_adapter)
+end
+
+import Zip, package, path, math, time
+
+/*
+*/
+
+
+function importProject(project_path)
+  zp = Zip.ZipFile(project_path, "r")
+  tmp_file = "/storage/emulated/0/.SaynaaIDE/bin/tmp.sa"
+  zp.extract_file("app.cfg", tmp_file)
+  cfg = package.loadfile(tmp_file)
+  
+  project_name = cfg.app.name
+  package = cfg.app.package
+  version = cfg.app.versionName
+
+  ll = LoadLayout(activity)
+  objects = ll.getObjects()
+  dialog = dialog_utils.createDialog(activity, theme.getDialogTheme(), ll.createView(load("utils/layout/importproject.ly")))
+
+  ok = objects.ok
+  cancel = objects.cancel
+  content = objects.content
+  content.setText("Name: $project_name\nVersion: $version\nPackage Name: $package\nPath: $project_path")
+
+  ok.setOnClickListener({
+    onClick: function(v)
+      project = saynaadir + "/" + project_name
+      if path.exists(project)
+        project = project .. "_" .. math.rand()
+      end
+    
+      os.mkdir(project)
+      Zip.ZipFile(project_path, "r").extractall(project)
+      refreshAppList()
+      toast("Project Imported")
+      
+      dialog.dismiss();
+    end
+  })
+
+  cancel.setOnClickListener({
+    onClick: function(v)
+      dialog.dismiss()
+    end
+  })
 end
 
 function deleteProject(index)
@@ -116,7 +155,7 @@ function deleteProject(index)
 
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = utils.createDialog(activity, ll.createView(load("deleteproject.ly")))
+  dialog = dialog_utils.createDialog(activity, theme.getDialogTheme(), ll.createView(load("utils/layout/deleteproject.ly")))
 
   delete = objects.delete 
   cancel = objects.cancel
@@ -144,7 +183,7 @@ end
 function newProject()
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = utils.createDialog(activity, ll.createView(load("createproject.ly")))
+  dialog = dialog_utils.createDialog(activity, theme.getDialogTheme(), ll.createView(load("utils/layout/createproject.ly")))
 
   create = objects.create
   cancel = objects.cancel
@@ -166,14 +205,18 @@ function newProject()
         return;
       end
       
-      if utils.is_invalid_package(pkg) then
+      if validator.is_invalid_package(pkg) then
         packageName.setError("Enter valid package name");
         return;
       end
 
-      if(utils.buildProject(saynaadir, name, pkg))
+      if(file_utils.buildProject(saynaadir, name, pkg))
         refreshAppList()
         toast("Project Created")
+        b = Bundle()
+        b.putString('project', saynaadir .. "/" .. name)
+        b.putString('name', name)
+        activity.newActivity("editor", b)
       else
         toast("Project Creation failed!")
       end
@@ -189,8 +232,27 @@ function newProject()
   })
 end
 
-function onKeyDown(c,e)
-  if c==4 then
+lastBackPressTime = 0
+
+function onBackPressed()
+  currentTime = time.nano()
+  diff = currentTime - lastBackPressTime
+
+  // 2,000,000,000 ns = 2 seconds
+  if diff < 2000000000
+    // Clear all Activities
+    // after changing the theme or opening filemanager.sa
+    // to prevent previously opened screens from being restored.
+    activity.finishAffinity()
+  else
+    lastBackPressTime = currentTime
+    toast("Press back again to exit")
+    return true
+  end
+end
+
+function onKeyDown(keyCode, even)
+  if keyCode == KeyEvent.KEYCODE_BACK then
     if mDrawer.isDrawerOpen(3) then
       mDrawer.closeDrawer(3)
       return true
@@ -198,8 +260,16 @@ function onKeyDown(c,e)
   end
 end
 
-function onCreate()
-  drawer_adapter = SaynaaAdapter(activity, load("items.ly"), drawerData)
+function onCreate(bundle)
+  if bundle != null then
+    project = bundle.getString("project")
+    if project != null then
+      importProject(project)
+    end
+  end
+
+
+  drawer_adapter = SaynaaAdapter(activity, load("main_items.ly"), drawerData)
   drawer_list.setAdapter(drawer_adapter)
   drawer_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
@@ -215,7 +285,8 @@ function onCreate()
     onItemClick: function(parent, view, position, id)
       b = Bundle()
       b.putString('project', projects[position])
-      activity.newActivity("main2", b)
+      b.putString('name', appData[position].appname)
+      activity.newActivity("editor", b)
     end
   }))
   
@@ -235,18 +306,19 @@ function onCreate()
   pop=PopupMenu(activity, btnmenu)
   menu=pop.getMenu()
   
-  menu.add(0, 0, 0, "New Project")
-  menu.add(0, 1, 0, "About")
+  menu.add(0, 0, 0, "Import Project")
+  menu.add(0, 1, 0, "New Project")
+  menu.add(0, 2, 0, "About")
   
   pop.setOnMenuItemClickListener({
     onMenuItemClick: function(item)
         id = item.getItemId()
         if id == 0 then
-          pop.hide();
-          newProject()
+          activity.newActivity("filemanager")
         elif id == 1 then
-          pop.hide()
-          activity.newActivity("main3")
+          newProject()
+        elif id == 2 then
+          activity.newActivity("about")
         end
         return true
     end

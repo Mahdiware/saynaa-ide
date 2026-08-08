@@ -3,6 +3,7 @@ import re
 
 ViewGroup = java.bindClass('android.view.ViewGroup')
 View = java.bindClass('android.view.View')
+Toast = java.bindClass('android.widget.Toast')
 LinearLayout = java.bindClass('android.widget.LinearLayout')
 LinearLayoutParams = java.bindClass('android.widget.LinearLayout$LayoutParams')
 RelativeLayout = java.bindClass('android.widget.RelativeLayout')
@@ -48,6 +49,7 @@ RelativeLayoutRule = {
   layout_alignParentStart: 20,
   layout_alignParentEnd: 21
 }
+
 InputTypeFlag = {
   none: 0x00000000,
   text: 0x00000001,
@@ -77,6 +79,7 @@ InputTypeFlag = {
   date: 0x00000014,
   time: 0x00000024
 }
+
 ImeOptionFlag = {
   normal: 0x00000000,
   actionUnspecified: 0x00000000,
@@ -95,6 +98,7 @@ ImeOptionFlag = {
   flagNoEnterAction: 0x40000000,
   flagForceAscii: 0x80000000
 }
+
 AutoLinkFlag = {
   none: 0x00,
   web: 0x01,
@@ -103,6 +107,7 @@ AutoLinkFlag = {
   map: 0x08,
   all: 0x0f
 }
+
 ScaleTypeMap = {
   matrix: ImageView.ScaleType.MATRIX,
   fitXY: ImageView.ScaleType.FIT_XY,
@@ -238,7 +243,6 @@ gravity = {
   'end': 8388613
 }
 
-
 class LoadLayout
   function _init(context)
     this.context = context
@@ -249,6 +253,8 @@ class LoadLayout
     wm.getDefaultDisplay().getMetrics(out)
     this.WIDTH = out.widthPixels
     this.HEIGHT = out.heightPixels
+    
+    this.saynaadir = this.context.getSaynaaDir()
     
     this.module = null
     this.data = null
@@ -267,6 +273,10 @@ class LoadLayout
   
   function getObjects()
     return this.ids
+  end
+  
+  function toast(msg)
+	Toast.makeText(this.context, msg, Toast.LENGTH_SHORT).show()
   end
 
   function as_numeric(value)
@@ -376,7 +386,7 @@ class LoadLayout
     if not value is String then
       return parts
     end
-    return parts.split('|')
+    return value.split('|')
   end
   
   function parse_flags(value, map)
@@ -409,6 +419,7 @@ class LoadLayout
     if name == null then
       return null
     end
+    // FIXME
     result = pcall(function(k) return AndroidR.attr[k] end, name)
     if result[0] then
       return result[1]
@@ -485,6 +496,9 @@ class LoadLayout
         return percent
       end
     end
+    if value is Bool then
+      return value
+    end
     num = pcall(function(v) return Number(v) end, value)
     if num[0] then
       return num[1]
@@ -510,12 +524,9 @@ class LoadLayout
     return ViewGroup.LayoutParams(width, height)
   end
   
-  function collect_children(node, start_index)
-    if start_index == null then
-      return null
-    end
+  function collect_children(node)
     children = []
-    i = start_index
+    i = 1
     while true do
       child = node.get(i)
       if child == null then
@@ -527,6 +538,7 @@ class LoadLayout
     if children.length == 0 then
       return null
     end
+
     return children
   end
   
@@ -601,7 +613,7 @@ class LoadLayout
       end
     else
       // Load image from saynaadir + file path
-      bitmap = BitmapFactory.decodeFile(java.saynaadir + "/" + src)
+      bitmap = BitmapFactory.decodeFile(this.saynaadir + "/" + src)
       if (bitmap != null)
         // Convert to drawable
         drawable = BitmapDrawable(this.context.getResources(), bitmap)
@@ -765,31 +777,7 @@ class LoadLayout
   
     src = node.get('src')
     if src != null and java.instanceof(view, ImageView) then
-      if src is String and src.startswith('?') then
-        res_id = this.get_identifier(src.sub(1))
-        if res_id != 0 then
-          view.setImageResource(res_id)
-        end
-      else
-        // Load image from saynaadir + file path
-        bitmap = BitmapFactory.decodeFile(java.saynaadir + "/" + src)
-        if (bitmap != null)
-          // Convert to drawable
-          drawable = BitmapDrawable(this.context.getResources(), bitmap)
-          view.setImageDrawable(drawable)
-        else
-          // Load image from file path
-          bitmap = BitmapFactory.decodeFile(src)
-          if (bitmap != null)
-            // Convert to drawable
-            drawable = BitmapDrawable(this.context.getResources(), bitmap)
-            view.setImageDrawable(drawable)
-          end
-        end
-      end
-      if src is Number then
-        view.setImageResource(src)
-      end
+      this.apply_image(view, src)
     end
   
     scale_type = node.get('scaleType')
@@ -817,12 +805,12 @@ class LoadLayout
       if text_alignment == 'viewStart' then view.setTextAlignment(5) end
       if text_alignment == 'viewEnd' then view.setTextAlignment(6) end
     end
-  /*
+  
     ellipsize = node.get('ellipsize')
     if ellipsize != null then
-      view.setEllipsize(TruncateAt[ellipsize.upper()])
+      view.setEllipsize(TruncateAt.valueOf(ellipsize.upper()))
     end
-  */
+  
     on_click = node.get('onClick')
     if on_click != null then
       view.setClickable(true)
@@ -846,10 +834,15 @@ class LoadLayout
     if node_id != null and this.data != null and this.data is Map then
       value = this.data.get(node_id)
       if value != null then
-        if java.instanceof(view, TextView) then
-          view.setText(value)
-        elif java.instanceof(view, ImageView) then
-          this.apply_image(view, value)
+        if value is String then
+          if java.instanceof(view, TextView) then
+            view.setText(value)
+          elif java.instanceof(view, ImageView) then
+            this.apply_image(view, value)
+          end
+        elif value is Map then
+          this.apply_attrs(view, value)
+          this.apply_auto_attrs(view, value)
         end
       end
     end
@@ -883,16 +876,7 @@ class LoadLayout
   end
   
   function createView(node, parent)
-    child_start = null
     node_type = node.get(0)
-    if node_type != null then
-      child_start = 1
-    else
-      node_type = node.get(1)
-      if node_type != null then
-        child_start = 2
-      end
-    end
 
     if node_type == null then
       assert(false, 'loadlayout: missing view type')
@@ -903,8 +887,6 @@ class LoadLayout
     if style_value != null and style_value is String then
       if style_value.startswith('?') then
         style_id = this.get_identifier(style_value.sub(1))
-      else
-        style_id = this.checkattr(style_value)
       end
     end
     if style_id != null and style_id != 0 then
@@ -930,7 +912,7 @@ class LoadLayout
       end
     end
   
-    children = this.collect_children(node, child_start)
+    children = this.collect_children(node)
     if children != null then
       i = 0
       while i < children.length do
@@ -947,7 +929,9 @@ end
 
 
 function loadlayout(activity, node, data)
-    module = activity.getModule()
+    // Prevent SaynaaAdapter from modifying global variables.
+    // make module null when data is a Map.
+    module = data is Map ? null : activity.getModule()
 
     ll = LoadLayout(activity)
     ll.setModule(module)

@@ -1,0 +1,38 @@
+import "android.widget.*"
+import "android.view.*"
+import "android.graphics.*"
+import "android.graphics.drawable.*"
+import "android.content.*"
+import "android.content.Intent"
+import "android.net.Uri"
+import utils.ui_utils
+
+function toast(msg)
+  Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+end
+
+function onCreate()
+  root = loadlayout(activity, load("about_layout.ly"))
+  activity.setContentView(root)
+
+  Github.setOnClickListener(({
+    onClick: function(v)
+      toast("Opening GitHub")
+      intent = Intent(Intent.ACTION_VIEW)
+      intent.setData(Uri.parse("https://github.com/mahdiware/saynaa-idr"))
+      activity.startActivity(intent)
+    end
+  }))
+
+  Share.setOnClickListener(({
+    onClick: function(v)
+      toast("Share SaynaaIDE")
+
+      intent = Intent(Intent.ACTION_SEND)
+      intent.setType("text/plain")
+      intent.putExtra(Intent.EXTRA_SUBJECT, "SaynaaIDE")
+      intent.putExtra(Intent.EXTRA_TEXT, "Check out SaynaaIDE on GitHub:\nhttps://github.com/mahdiware")
+      activity.startActivity(Intent.createChooser(intent, "Share via"))
+    end
+  }))
+end
