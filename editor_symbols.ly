@@ -1,7 +1,7 @@
 return [
   {
     title: "Tab",
-    insert: "\n"
+    insert: "\t"
   },
   {
     title: "Space",

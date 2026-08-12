@@ -45,9 +45,9 @@ return {
                 layout_height: "match_parent",
                 layout_margin: "-10dp",
                 id: "btn",
-                background: "#00000000",
                 padding: "26dp",
-                src: "icons/navnav.png",
+                src: "icons/ic_drawer.png",
+                colorFilter: 0xFFFFFFFFFF,
                 layout_width: "match_parent",
               },
             },
@@ -147,9 +147,9 @@ return {
               layout_height: "match_parent",
               layout_margin: "-10dp",
               id: "btnmenu",
-              background: "#00000000",
+              colorFilter: 0xFFFFFFFFFF,
               padding: "20dp",
-              src: "icons/abc_ic_menu_moreoverflow_mtrl_alpha.png",
+              src: "icons/ic_dotsmenu.png",
               layout_width: "match_parent",
             },
           },
@@ -185,7 +185,7 @@ return {
         layout_width: "match_parent",
         layout_height: "match_parent",
         textSize: "10sp",
-        dark: theme.isdarkmode
+        dark: theme.isDarkMode()
       }
     },
   },
@@ -213,7 +213,7 @@ return {
       layout_height: "75px",
       fillViewport: true,
       horizontalScrollBarEnabled: false,
-      background: ui_utils.strokeBg(theme.colorPrimary, 1, theme.secondary, 1),
+      background: ui_utils.strokeBg(theme.background, 1, theme.secondary, 1),
 
       {
         LinearLayout,
@@ -222,7 +222,163 @@ return {
         layout_width: "wrap_content",
         layout_height: "match_parent",
         gravity: "center_vertical",
-      }
-    }
+      },
+    },
+    {
+      LinearLayout,
+      id: "findreplace",
+      visibility: "gone",
+      orientation: "vertical",
+      paddingLeft: "16dp",
+      paddingRight: "8dp",
+      background: theme.background,
+      
+      // FIND
+      {
+        LinearLayout,
+        orientation: "vertical",
+        layout_width: "match_parent",
+        layout_height: "52dp",
+        
+        {
+          LinearLayout,
+          orientation: "horizontal",
+          layout_height: "wrap_content",
+          layout_width: "match_parent", 
+          layout_weight: "1",
+        
+          {
+            TextView,
+            text: "Find",
+            textSize: "17sp",
+            gravity: "center",
+          },
+
+          {
+            EditText,
+            id: "find",
+            textSize: "18sp",
+            singleLine: true,
+            paddingLeft: "4dp",
+            paddingRight: "4dp",
+            layout_height: "52dp",
+            layout_weight: "1",
+          },
+        },
+      },
+
+      // REPLACE
+      {
+        LinearLayout,
+        id: "replaceSection",
+        visibility: "gone",
+        orientation: "vertical",
+        layout_width: "match_parent",
+        layout_height: "52dp",
+        
+        {
+          LinearLayout,
+          orientation: "horizontal",
+          layout_height: "wrap_content",
+          layout_width: "match_parent", 
+          layout_weight: "1",
+        
+          {
+            TextView,
+            text: "Rep",
+            textSize: "17sp",
+            gravity: "center",
+          },
+
+          {
+            EditText,
+            id: "replace",
+            textSize: "18sp",
+            singleLine: true,
+            paddingLeft: "4dp",
+            paddingRight: "4dp",
+            layout_height: "52dp",
+            layout_weight: "1",
+          },
+        },
+      },
+
+      // Separator
+      {
+        View,
+        background: "#414141",
+        layout_width: "match_parent",
+        layout_height: "1dp",
+        layout_marginTop: "8dp",
+      },
+
+      // Bottom buttons
+      {
+        LinearLayout,
+        orientation: "horizontal",
+        gravity: "center_vertical",
+        layout_width: "match_parent",
+        layout_height: "58dp",
+
+        {
+          TextView,
+          id: "btnprev",
+          text: "PREV",
+          textSize: "17sp",
+          gravity: "center",
+          clickable: true,
+          layout_width: "0dp",
+          layout_height: "58dp",
+          layout_weight: "1",
+        },
+
+        {
+          TextView,
+          id: "btnnext",
+          text: "NEXT",
+          textSize: "17sp",
+          gravity: "center",
+          clickable: true,
+          layout_width: "0dp",
+          layout_height: "58dp",
+          layout_weight: "1",
+        },
+
+        {
+          TextView,
+          id: "btnreplace",
+          text: "REP",
+          textSize: "17sp",
+          gravity: "center",
+          clickable: true,
+          layout_width: "0dp",
+          layout_height: "58dp",
+          layout_weight: "1",
+        },
+
+        {
+          TextView,
+          id: "btnall",
+          text: "ALL",
+          enabled: false,
+          textSize: "17sp",
+          gravity: "center",
+          clickable: true,
+          layout_width: "0dp",
+          layout_height: "58dp",
+          layout_weight: "1",
+        },
+
+        {
+          ImageView,
+          id: "btnmore",
+          paddingRight: "10dp",
+          colorFilter: theme.text,
+          layout_height: "40dp",
+          layout_width: "40dp",
+          src: "icons/ic_dotsmenu.png",
+        },
+      },
+    },
   }
 }

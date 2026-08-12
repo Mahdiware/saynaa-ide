@@ -13,6 +13,8 @@ import "android.graphics.*"
 import "android.graphics.drawable.*"
 import "android.app.ProgressDialog"
 import "io.github.rosemoe.sora.widget.schemes.SchemeDarcula"
+import "io.github.rosemoe.sora.widget.*"
+import "io.github.rosemoe.sora.widget.component.*"
 import "com.android.saynaa.utils.FileUtil"
 import utils.file_utils, utils.ui_utils, utils.dialog_utils, utils.apkbuilder
 
@@ -20,6 +22,7 @@ activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJU
 activity.getActionBar().hide()
 
 # global variables
+savedText = null
 openfile = null 
 project = null
 parentDirectory = []
@@ -27,6 +30,16 @@ rootpath = null
 AdapterData = null
 result = 0
 resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+
+ReplaceEnabled = false
+findAndReplaceOpen = false
+findAndReplaceCase = false
+findAndReplaceRegex = false
+
+// visibility
+visible = 0
+invisible = 4
+gone = 8
 
 if resourceId > 0 then
   result = activity.getResources().getDimensionPixelSize(resourceId);
@@ -41,10 +54,10 @@ function fileMenuBuilder(path)
     onMenuItemClick: function(item)
       id = item.getItemId()
       if id == 0 then
-        FileUtil.deleteRecursive(path)
+        FileUtil.deleteFile(path)
         refreshDrawerList()
       elif id == 1 then
-        toast("TODO")
+        renameFile(path.getParent(), path.getName())
       elif id == 2 then
         file_utils.copyToClipboard(activity, path.getName())
       elif id == 3 then
@@ -101,7 +114,7 @@ function openFolder(_path)
   return data
 end
 
-function createDirectory()
+function createFile()
   parent = null
   if parentDirectory is List and parentDirectory.length then
     parent = parentDirectory[-1]
@@ -109,7 +122,7 @@ function createDirectory()
 
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, theme.getDialogTheme(), ll.createView(load("utils/layout/createfolder.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/createfile.ly")))
 
   name = objects.name
   cancel = objects.cancel
@@ -166,21 +179,70 @@ function createDirectory()
 end
 
 
+function renameFile(parent, originalName)
+  ll = LoadLayout(activity)
+  objects = ll.getObjects()
+  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/renamefile.ly")))
+
+  name = objects.name
+  cancel = objects.cancel
+  rename = objects.rename
+  
+  name.setText(originalName)
+  
+  rename.setOnClickListener({
+    onClick: function(v)
+      value = name.getText()
+      
+      if (value == "") then
+        name.setError("Enter file name");
+        return;
+      end
+      
+      if parent == null then
+        toast("error Parent is null")
+      end
+      
+      src = parent .. "/" .. originalName
+      des = parent .. "/" .. value
+      
+      if FileUtil.isDirectory(src) then
+        FileUtil.copyDir(src, des)
+      else
+        FileUtil.copyFile(src, des)
+      end
+      FileUtil.deleteFile(src)
+      refreshDrawerList()
+
+      dialog.dismiss()
+    end
+  })
+  
+  cancel.setOnClickListener({
+    onClick: function(v)
+      dialog.dismiss()
+    end
+  })
+end
+
+
 assert(activity != null, 'activity is null')
 
 Layout = {
   DrawerLayout,
   id: "mDrawer",
-  load("editor_layout.ly"),
-  load("editor_drawer.ly")
+  load(saynaadir .. "/editor_layout.ly"),
+  load(saynaadir .. "/editor_drawer.ly")
 }
 
 root = loadlayout(activity, Layout)
 assert(root != null, 'loadlayout returned null')
 activity.setContentView(root)
 
-symbols = load("editor_symbols.ly")
-tmp_symbols = {}
+symbols = load(saynaadir .. "/editor_symbols.ly")
+searcher = null
+nonPrintablePaintingFlags = CodeEditor.FLAG_DRAW_WHITESPACE_LEADING | CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
+
 
 function onKeyDown(c,e)
   if c==4 then
@@ -191,6 +253,11 @@ function onKeyDown(c,e)
     if openfile != null
       file_utils.writeFile(openfile, editor.getText())
     end
+    
+    if findAndReplaceOpen then
+      closeFindAndReplace()
+      return true
+    end
   end
 end
 
@@ -198,8 +265,26 @@ function refreshDrawerList()
   parent = parentDirectory[-1]
   AdapterData = openFolder(parent)
 
-  adapter = SaynaaAdapter(activity, load("utils/layout/filemanager.ly"), AdapterData)
+  adapter = SaynaaAdapter(activity, load(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
   drawer_list.setAdapter(adapter)
+end
+
+function markSaved(text)
+  savedText = text
+end
+
+function isModified(text)
+  return savedText == text
+end
+
+function closeFindAndReplace()
+  findAndReplaceOpen = false     
+  findreplace.setVisibility(gone)
+  ReplaceEnabled = false
+  replaceSection.setVisibility(gone)
+  btnall.setEnabled(false);
+  replace.setText("")
+  find.setText("")
 end
 
 function onCreate(bundle)
@@ -211,25 +296,26 @@ function onCreate(bundle)
   project = bundle.getString("project")
   name = bundle.getString("name")
   title.setText(name)
-  
 
   openfile = project .. "/main.sa"
   filename.setText("main.sa")
   editor.setText(file_utils.readFile(openfile))
-  
+  searcher = editor.getSearcher()
+
   buttonBarStyle = activity.getResources().getIdentifier("android:attr/buttonBarButtonStyle", null, null)
   
   for i in symbols do
-    tmp_symbols.setattr(i.title, i.insert)
-
     btn = Button(activity, null, buttonBarStyle)
-    btn.setTextColor(0xffffffff)
     btn.setText(i.title)
-    btn.setOnClickListener({
-      onClick: function(v)
-        editor.pasteText(tmp_symbols.getattr(v.getText()));
-      end
-    })
+    btn. setTextColor(theme.text)
+    anon = function(sym) 
+      btn.setOnClickListener({
+        onClick: function(v)
+          editor.pasteText(sym);
+        end
+      })
+    end
+    anon(i.insert)
     symbolBar.addView(btn)
   end
   
@@ -260,22 +346,45 @@ function onCreate(bundle)
   
   drawer_add.setOnClickListener({
     onClick: function(v)
-      createDirectory()
+      createFile()
     end
   })
   
   pop=PopupMenu(activity, btnmenu)
   menu=pop.getMenu()
   
-  menu.add(0, 0, 0, "Build")
-  menu.add(0, 1, 0, "About")
+  menu.add(0, 0, 0, "Search")
+  menu.add(0, 1, 0, "Build")
+  menu.add(0, 2, 0, "Word wrap").setCheckable(true)
+  menu.add(0, 3, 0, "Read-only mode").setCheckable(true)
+  menu.add(0, 4, 0, "Show blank symbol").setCheckable(true)
+  menu.add(0, 5, 0, "About")
   
   pop.setOnMenuItemClickListener({
     onMenuItemClick: function(item)
         id = item.getItemId()
         if id == 0 then
-          BuildApk()
-        else
+          findreplace.setVisibility(visible)
+          findAndReplaceOpen = true
+        elif id == 1 then
+          apkbuilder.BuildApk(activity, project)
+        elif id == 2 then
+          wordwrap = not item.isChecked()
+          item.setChecked(wordwrap)
+          editor.setWordwrap(wordwrap)
+        elif id == 3 then
+          readonly = not item.isChecked()
+          item.setChecked(readonly)
+          editor.setEditable(not readonly);
+        elif id == 4 then
+          blanksymbol = not item.isChecked()
+          item.setChecked(blanksymbol)
+          if blanksymbol then
+            editor.setNonPrintablePaintingFlags(nonPrintablePaintingFlags);
+          else
+            editor.setNonPrintablePaintingFlags(0);
+          end
+        elif id == 5 then
           activity.newActivity("about")
         end
         return true
@@ -285,6 +394,103 @@ function onCreate(bundle)
   btnmenu.setOnClickListener({
     onClick: function(v)
      pop.show();
+    end
+  })
+  
+  
+  // findreplace section
+  fr_pop=PopupMenu(activity, btnmore)
+  fr_menu=fr_pop.getMenu()
+  
+  fr_menu.add(0, 0, 0, "Regex").setCheckable(true)
+  fr_menu.add(0, 1, 0, "Match case").setCheckable(true)
+  fr_menu.add(0, 2, 0, "Close")
+
+  fr_pop.setOnMenuItemClickListener({
+    onMenuItemClick: function(item)
+        id = item.getItemId()
+        if id == 0 then
+          findAndReplaceRegex = not item.isChecked()
+          item.setChecked(findAndReplaceRegex)
+
+          // Trigger afterTextChanged
+          find.setText(find.getText())
+        elif id == 1 then
+          findAndReplaceCase = not item.isChecked()
+          item.setChecked(findAndReplaceCase)
+
+          // Trigger afterTextChanged
+          find.setText(find.getText())
+        elif id == 2 then
+          closeFindAndReplace()
+        end
+        return true
+    end
+  })
+  
+  btnmore.setOnClickListener({
+    onClick: function(v)
+     fr_pop.show();
+    end
+  })
+
+  find.addTextChangedListener({
+    afterTextChanged: function(s)
+      if s.length > 0 then
+        searcher.search(s, EditorSearcher.SearchOptions(not findAndReplaceCase, findAndReplaceRegex))
+      else
+        searcher.stopSearch()
+      end
+    end
+  })
+  
+  btnnext.setOnClickListener({
+    onClick: function(v)
+      if not searcher.hasQuery() or searcher.getMatchedPositionCount() == 0 then
+        toast("Text not found")
+        return
+      end
+
+      searcher.gotoNext();
+    end
+  })
+  
+  btnprev.setOnClickListener({
+    onClick: function(v)
+      if not searcher.hasQuery() or searcher.getMatchedPositionCount() == 0 then
+        toast("Text not found")
+        return
+      end
+
+      searcher.gotoPrevious()
+    end
+  })
+  
+  btnreplace.setOnClickListener({
+    onClick: function(v)
+      if not ReplaceEnabled then
+        ReplaceEnabled = true
+        replaceSection.setVisibility(visible)
+        btnall.setEnabled(true);
+        return
+      end
+      if not searcher.hasQuery() or searcher.getMatchedPositionCount() == 0 then
+        toast("Text not found")
+        return
+      end
+
+      searcher.replaceCurrentMatch(replace.getText())
+    end
+  })
+  
+  btnall.setOnClickListener({
+    onClick: function(v)
+      if not searcher.hasQuery() or searcher.getMatchedPositionCount() == 0 then
+        toast("Text not found")
+        return
+      end
+
+      searcher.replaceAll(replace.getText())
     end
   })
   
@@ -327,27 +533,4 @@ function onCreate(bundle)
       end
     end
   }))
-end
-
-function BuildApk()
-  if project == null
-    toast("something wrong!")
-    return
-  end
-  
-  style = java.bindClass('android.R$style')
-  dlg = dialog_utils.createProgressDialog(activity, theme.getDialogTheme());
-  dlg.setTitle("Compiling");
-  dlg.setMessage("Building...")
-  dlg.setMax(100);
-  dlg.show()
-  
-  runner = Runnable(function()
-    cfg = package.loadfile(project + "/app.cfg")
-    saynaadir = activity.getSaynaaExtDir()
-    apkbuilder.build(activity, dlg, cfg, project, saynaadir .. "/bin")
-  end)
-  
-  thread = Thread(runner)
-  thread.start()
 end

@@ -1,11 +1,18 @@
-import java
+import java, themes
+from "../loadlayout.sa" import LoadLayout
 
-function createDialog(context, theme, view)  
+// Don't remove these, using in: dialogmessage.ly
+LinearLayout = java.bindClass('android.widget.LinearLayout')
+TextView = java.bindClass('android.widget.TextView')
+
+function createDialog(context, view)
   AlertDialog = java.bindClass("android.app.AlertDialog")
   Gravity = java.bindClass("android.view.Gravity")
   WindowManager = java.bindClass("android.view.WindowManager")
 
-  builder = AlertDialog.Builder(context, theme)  
+  theme = themes.ThemeManager(context)
+
+  builder = AlertDialog.Builder(context, theme.getDialogTheme())  
   builder.setView(view)  
   dialog = builder.create()  
   dialog.setCancelable(true);  
@@ -24,14 +31,16 @@ function createDialog(context, theme, view)
 end
 
   
-function createProgressDialog(context, theme)  
+function createProgressDialog(context)  
   ProgressDialog = java.bindClass("android.app.ProgressDialog")
   Gravity = java.bindClass("android.view.Gravity")
   WindowManager = java.bindClass("android.view.WindowManager")
 
-  dialog = ProgressDialog(context, theme);
-  dialog.setTitle("Compiling");
-  dialog.setMessage("Building...")
+  theme = themes.ThemeManager(context)
+
+  dialog = ProgressDialog(context, theme.getDialogTheme());
+  dialog.setTitle("Title");
+  dialog.setMessage("Message...")
   dialog.setMax(100);
   dialog.show()
 
@@ -45,4 +54,22 @@ function createProgressDialog(context, theme)
   end
   
   return dialog
+end
+
+function dialogMessage(context, title, body)
+  saynaadir = context.getSaynaaDir()
+  theme = themes.ThemeManager(context)
+
+  ll = LoadLayout(context)
+  dialog = createDialog(context, theme.getDialogTheme(), ll.createView(load(saynaadir .. "/utils/layout/dialogmessage.ly")))
+  
+  objects = ll.getObjects()
+  objects.title.setText(title)
+  objects.body.setText(body)
+
+  objects.ok.setOnClickListener({
+    onClick: function(v) 
+      dialog.dismiss()
+    end
+  })
 end

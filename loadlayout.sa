@@ -1,5 +1,6 @@
 import java
 import re
+import package
 
 ViewGroup = java.bindClass('android.view.ViewGroup')
 View = java.bindClass('android.view.View')
@@ -876,6 +877,10 @@ class LoadLayout
   end
   
   function createView(node, parent)
+    if not (node is Map) then
+      assert(false, 'loadlayout node: expected Map and got ' .. type(node) .. package.path)
+    end
+
     node_type = node.get(0)
 
     if node_type == null then
@@ -917,6 +922,9 @@ class LoadLayout
       i = 0
       while i < children.length do
         child = children[i]
+        if not (child is Map) then
+          assert(false, 'loadlayout child: expected Map and got ' .. type(child))
+        end
         child_view = this.createView(child, view)
         view.addView(child_view)
         i = i + 1
@@ -929,14 +937,19 @@ end
 
 
 function loadlayout(activity, node, data)
-    // Prevent SaynaaAdapter from modifying global variables.
-    // make module null when data is a Map.
-    module = data is Map ? null : activity.getModule()
+  if not (node is Map) then
+    assert(false, 'loadlayout node: expected Map and got ' .. type(node))
+  end
 
-    ll = LoadLayout(activity)
-    ll.setModule(module)
-    ll.setData(data)
-    return ll.createView(node)
+  // Prevent SaynaaAdapter from modifying global variables.
+  // make module null when data is a Map.
+  module = data is Map ? null : activity.getModule()
+
+  ll = LoadLayout(activity)
+  ll.setModule(module)
+  ll.setData(data)
+    
+  return ll.createView(node)
 end
   
   

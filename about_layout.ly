@@ -36,6 +36,7 @@ return {
         textSize: "32sp",
         textStyle: "bold",
         gravity: "center",
+        textColor: "#EEEEEE",
         layout_marginTop: "12dp",
         layout_width: "match_parent",
         layout_height: "wrap_content"

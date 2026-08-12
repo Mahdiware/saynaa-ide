@@ -48,3 +48,30 @@ function installApk(context, apkFile)
   intent.setDataAndType(uri, "application/vnd.android.package-archive");
   context.startActivity(intent);
 end
+
+function shareProject(context, projectFile)
+  File = java.bindClass("java.io.File")
+  file = File(projectFile)
+
+  Intent = java.bindClass("android.content.Intent")
+  Build = java.bindClass("android.os.Build")
+  Uri = java.bindClass("android.net.Uri")
+
+  intent = Intent(Intent.ACTION_SEND)
+
+  uri = null
+
+  if Build.VERSION.SDK_INT >= Build.VERSION_CODES.N then
+    FileProvider = java.bindClass("androidx.core.content.FileProvider")
+    uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file)
+  else
+    uri = Uri.fromFile(file)
+  end
+
+  intent.setType("application/octet-stream")
+  intent.putExtra(Intent.EXTRA_STREAM, uri)
+  intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+  chooser = Intent.createChooser(intent, "Share Saynaa Project")
+  context.startActivity(chooser)
+end

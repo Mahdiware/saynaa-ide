@@ -1,0 +1,51 @@
+import os, path, compile, file_utils
+
+function compileCodeHelper(map)
+  if map.type == "directory" then
+    children = map.tree
+    if children is List then
+      for i in children do
+        if i is Map then
+          if i.type == "directory" then
+            compileCodeHelper(i)
+          else
+            if (i.name.endswith(".sa") or i.name.endswith(".cfg") or i.name.endswith(".ly")) then
+              compile.Compile(file_utils.readFile(i.path)).save(i.path)
+            end
+          end
+        end
+      end
+    end
+  else
+    error("Hey Something Wrong")
+    //compile.Compile(file_utils.readFile(map.path)).save(map.path)
+  end
+end
+
+function compileCode(sourcepath)
+  if (not path.exists(sourcepath))
+    return false
+  end
+
+  if not path.isdir(sourcepath) then
+    return false
+  end
+
+  map = file_utils.treeFolder(sourcepath)
+  result = pcall(compileCodeHelper, map)
+  return result[0]
+end
+
+
+function setBytecodeEnabled(context, enabled)
+  context.setSharedData("bytecode_compilation", enabled)
+end
+
+function isBytecodeEnabled(context)
+    default = true
+    data = context.getSharedData("bytecode_compilation")
+    if data is Bool then
+      return data
+    end
+    return default
+end

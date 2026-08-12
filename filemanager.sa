@@ -8,6 +8,7 @@ import "android.graphics.drawable.*"
 import "android.app.AlertDialog"
 import "android.app.*"
 import "android.os.Bundle"
+import "android.content.Intent"
 import "com.android.saynaa.adapter.*"
 import "com.android.saynaa.utils.FileUtil"
 
@@ -55,14 +56,14 @@ function openFolder(_path)
 end
 
 function onCreate(bundle)
-  layout = loadlayout(activity, load("filemanager_layout.ly"))
+  layout = loadlayout(activity, load(saynaadir .. "/filemanager_layout.ly"))
   activity.setContentView(layout)
   
   rootpath = "/sdcard"
   parentDirectory = [rootpath]
   AdapterData = openFolder(rootpath)
   
-  adapter = SaynaaAdapter(activity, load("utils/layout/filemanager.ly"), AdapterData)
+  adapter = SaynaaAdapter(activity, load(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
   list.setAdapter(adapter)
   
   back.setOnClickListener({
@@ -80,6 +81,8 @@ function onCreate(bundle)
         if name.endswith(".syp") then
           b = Bundle()
           b.putString('project', data.path)
+          activity.addActivityFlag(Intent.FLAG_ACTIVITY_NEW_TASK)
+          activity.addActivityFlag(Intent.FLAG_ACTIVITY_CLEAR_TOP)
           activity.newActivity("main", b)
         end
       else
@@ -92,17 +95,15 @@ function onCreate(bundle)
           parent = parentDirectory[-1]
           AdapterData = openFolder(parent)
           
-          adapter = SaynaaAdapter(activity, load("utils/layout/filemanager.ly"), AdapterData)
+          adapter = SaynaaAdapter(activity, load(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
           list.setAdapter(adapter)
         else
           goto = currect + "/" + data.title
           parentDirectory.append(goto)
           AdapterData = openFolder(goto)
           
-          adapter = SaynaaAdapter(activity, load("utils/layout/filemanager.ly"), AdapterData)
+          adapter = SaynaaAdapter(activity, load(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
           list.setAdapter(adapter)
-          
-          toast("hi")
         end
       end
     end

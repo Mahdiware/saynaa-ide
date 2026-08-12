@@ -1,7 +1,6 @@
 import java, Zip, path, os, io, compile, package
 
-// FIXME create buildin function or java code
-//         instead using os.system to delete or create file/folder 
+FileUtil = java.bindClass("com.android.saynaa.utils.FileUtil")
 
 function listPath(dir)
   list = []
@@ -80,34 +79,17 @@ end
 
 function getProjects(dir)
   projects = []
-  for i in path.listdir(dir) do
-    if i.type == "directory" then
-        for j in path.listdir(i.path) do
-          if j.name == "app.cfg" then
-            projects.append(i.path)
-          end
+  for i in FileUtil.listDirByRecent(dir) do
+    if i.isDirectory() then
+      fullpath = i.getAbsolutePath()
+      for j in path.listdir(fullpath) do
+        if j.name == "app.cfg" then
+          projects.append(fullpath)
         end
+      end
     end
   end
   return projects
-end
-
-function getAppData(projects)
-  data = {}
-  index = 0
-  for path in projects do
-    cfg = package.loadfile(path + "/app.cfg")
-    data[index] = {
-      appname : cfg.app.name,
-      appicon : path .. "/" .. cfg.app.icon,
-      appversion : "Version: " .. cfg.app.versionName,
-      package : "Package name: " .. cfg.app.package
-    }
-
-    index += 1
-  end
-  
-  return data
 end
 
 function extractFile(zipFile, FileToExtract, PathToSave)
@@ -129,51 +111,13 @@ function writeFile(file, content)
   r.close()
 end
 
-function compileCodeHelper(map)
-  if map.type == "directory" then
-    children = map.tree
-    if children is List then
-      for i in children do
-        if i is Map then
-          if i.type == "directory" then
-            compileCodeHelper(i)
-          else
-            if (i.name.endswith(".sa") or i.name.endswith(".cfg") or i.name.endswith(".ly")) then
-              compile.Compile(readFile(i.path)).save(i.path)
-            end
-          end
-        end
-      end
-    end
-  else
-    error("Hey Something Wrong")
-    //compile.Compile(readFile(map.path)).save(map.path)
-  end
-end
-
-function compileCode(frompath, topath)
-  if (not path.exists(topath))
-    os.mkdir(topath)
-  end
-
-  if not (path.isdir(frompath) and path.isdir(frompath)) then
-    error("compile failed")
-    return
-  end
-
-  cmd = 'cp -r "' .. frompath .. '/"* "' .. topath .. '"'
-  os.system(cmd)
-  map = treeFolder(topath)
-  compileCodeHelper(map)
-end
-
 function buildProject(root, name, pkg)
   project = root + "/" + name
   if path.exists(project) then
     return false
   end
 
-  os.mkdir(project)
+  FileUtil.makeDir(project)
   Zip.ZipFile("res/template.zip", "r").extractall(project)
   appcfg = project + "/app.cfg"
   
@@ -215,3 +159,21 @@ function createDirectory(path)
   return false
 end
 
+function rename(oldPath, newPath)
+  File = java.bindClass("java.io.File")
+  return File(oldPath).renameTo(File(newPath));
+end
+
+function copyHelper(source, destination)
+  Files = java.bindClass("java.nio.file.Files")
+  Paths = java.bindClass("java.nio.file.Paths")
+  Options = java.bindClass("java.nio.file.StandardCopyOption")
+
+  return Files.copy(Paths.get(source), Paths.get(destination), Options.REPLACE_EXISTING)
+end
+
+function copy(source, destination)
+  result = pcall(copyHelper, source, destination)
+  writeFile(destination .. "/info", "$source -> $destination\n${str(result)}")
+  return str(result[1]) == str(destination)
+end

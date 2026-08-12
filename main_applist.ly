@@ -10,7 +10,7 @@ return {
   {
     ImageView,
     id: "appicon",
-    src: "icon.png",
+    src: "icons/ic_image.png",
     layout_width: "32dp",
     layout_height: "32dp",
     layout_marginRight: "12dp",
@@ -22,11 +22,12 @@ return {
     orientation: "vertical",
     layout_width: "match_parent",
     layout_height: "wrap_content",
+    layout_weight: 1,
 
     {
       TextView,
       id: "appname",
-      text: "ListView",
+      text: "Name",
       textSize: "16sp",
       singleLine: true,
       ellipsize: "end",
@@ -65,5 +66,25 @@ return {
         layout_weight: '1',
       }
     }
-  }
+  },
+  
+  {
+    CardView,
+    layout_height: "65dp",
+    CardElevation: "0dp",
+    layout_marginRight: "-10dp",
+    background: 0x00000000,
+    radius: "33dp",
+    layout_width: "65dp",
+    {
+      ImageView,
+      layout_height: "match_parent",
+      layout_margin: "-10dp",
+      id: "filemenu",
+      padding: "20dp",
+      colorFilter: theme.text,
+      src: "icons/ic_dotsmenu.png",
+      layout_width: "match_parent",
+    }, 
+  },
 }

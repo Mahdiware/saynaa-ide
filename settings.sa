@@ -1,20 +1,28 @@
 import "android.widget.*"
 import "android.view.*"
 
-import utils.ui_utils
+import utils.ui_utils, utils.bytecode_utils
+AndroidRId = java.bindClass('android.R$id')
 
 actionBar = activity.getActionBar()
 actionBar.setDisplayHomeAsUpEnabled(true);
 actionBar.setDisplayShowHomeEnabled(false);
 
-function item(itemid, icon, title, desc, checked)
+function switchItem(itemid, icon, title, desc, checked)
   return {
     LinearLayout,
     orientation:"horizontal",
     gravity:"center_vertical",
     onClick: function(v)
+      if itemid == null then
+        return
+      end
+      
       // get switch id in currect module globals and toggle it
-      _module.getattr(itemid).toggle();
+      globals = _module.globals()
+      if globals.has(itemid) then
+        globals.get(itemid).toggle();
+      end
     end,
     padding:"12dp",
     layout_width:"match_parent",
@@ -155,13 +163,13 @@ layout={
         layout_width:"match_parent",
         layout_height:"wrap_content",
         
-        item(null, "icons/ic_create.png","Syntax Highlight","Highlight Saynaa code",true),
-        item("darktheme", "icons/theme.png","Dark Theme","Use dark interface",false),
-        item(null, "icons/ic_copy.png","Auto Save","Save files automatically",true),
+        switchItem(null, "icons/ic_create.png","Syntax Highlight","Highlight Saynaa code",true),
+        switchItem("darktheme", "icons/theme.png","Dark Theme","Use dark interface",false),
+        switchItem(null, "icons/ic_copy.png","Auto Save","Save files automatically",true),
 
         buttonItem(null, "icons/ic_image.png", "Appearance", "Theme, colors and fonts"),
         buttonItem(null, "icons/ic_edit.png", "Editor", "Code editor preferences"),
-        buttonItem(null, "icons/documentation.png", "About", "Version, licenses and credits"),
+        buttonItem("about", "icons/documentation.png", "About", "Version, licenses and credits"),
       },
 
       {
@@ -176,13 +184,13 @@ layout={
 
       {
         LinearLayout,
-        orientation:"horizontal",
+        orientation:"vertical",
         gravity:"center_vertical",
         background:ui_utils.roundBg(theme.cards, 20),
         layout_width:"match_parent",
         layout_height:"match_parent",
 
-        item(null, "icons/ic_preset.png", "Developer Mode", "Enable experimental features", false),
+        switchItem("compiling", "icons/ic_keystore.png", "Bytecode Compilation", "Compile source code into bytecode", true),
       },
 
       {
@@ -209,13 +217,36 @@ layout={
   },
 }
 
-activity.setContentView(loadlayout(activity,layout))
-
-darktheme.setChecked(theme.isdarkmode)
-darktheme.setOnCheckedChangeListener({
-  onCheckedChanged: function(v, checked)
-    theme.setDarkMode(checked)
-    activity.finishAffinity();
-    activity.newActivity("main")
+function onOptionsItemSelected(item)
+  if item.getItemId() == AndroidRId.home then
+    activity.finish()
+    return true
   end
-})
+end
+
+
+view = loadlayout(activity, layout)
+activity.setContentView(view)
+function onCreate(bundle)
+  darktheme.setChecked(theme.isDarkMode())
+  darktheme.setOnCheckedChangeListener({
+    onCheckedChanged: function(v, checked)
+      theme.setDarkMode(checked)
+      activity.finishAffinity()
+      activity.newActivity("main")
+    end
+  })
+
+  compiling.setChecked(bytecode_utils.isBytecodeEnabled(activity))
+  compiling.setOnCheckedChangeListener({
+    onCheckedChanged: function(v, checked)
+      bytecode_utils.setBytecodeEnabled(activity, checked)
+    end
+  })
+  
+  about. setOnClickListener({
+    onClick: function(v)
+      activity.newActivity("about")
+    end
+  })
+end

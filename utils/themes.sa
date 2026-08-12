@@ -25,9 +25,8 @@ darkmode = {
 class ThemeManager
   function _init(context)
     this.context = context
-    this.isdarkmode = this.isDarkMode()
-    
-    this.styleLight = mystyle.LightTheme6
+
+    this.styleLight = mystyle.LightTheme2
     this.styleDark = mystyle.DarkTheme2
     
     this.dialogLight = R_style.Theme_DeviceDefault_Light_Dialog_NoActionBar
@@ -37,7 +36,7 @@ class ThemeManager
   // it return missing class attribute
   // like: ThemeManager(context).missingattribute
   function _getattr(name)
-    if this.isdarkmode then
+    if this.isDarkMode() then
       result = darkmode.get(name)
       if result != null then
         return result
@@ -54,7 +53,6 @@ class ThemeManager
   
   function setDarkMode(dark)
     this.context.setSharedData("darkmode", dark)
-    this.isdarkmode = dark
   end
   
   function isDarkMode()
@@ -68,7 +66,7 @@ class ThemeManager
   end
   
   function  getDialogTheme()
-    if this.isdarkmode then
+    if this.isDarkMode() then
       return this.dialogDark
     else
       return this.dialogLight
@@ -76,7 +74,7 @@ class ThemeManager
   end
   
   function getTheme()
-    if this.isdarkmode then
+    if this.isDarkMode() then
       return this.styleDark
     else
       return this.styleLight

@@ -1,135 +1,237 @@
-import java, file_utils, validator, Zip, os, path, permissions
+import java, file_utils, dialog_utils
+import bytecode_utils, validator, Zip
+import os, path, permissions, package
 
 File = java.bindClass('java.io.File')
-FileOutputStream = java.bindClass('java.io.FileOutputStream')
-FileInputStream = java.bindClass('java.io.FileInputStream')
+FileUtil = java.bindClass("com.android.saynaa.utils.FileUtil")
 Signer = java.bindClass("apksigner.command.Signer")
 
-function build(context, dlg, config, srcpath, output)
-  saynaadir = context.getSaynaaDir()
+function BuildApk(context, project)
+  Runnable = java.bindClass("java.lang.Runnable")
+  Thread = java.bindClass("java.lang.Thread")
   
+  externaldir = context.getSaynaaExtDir()
+  
+  dlg = dialog_utils.createProgressDialog(context);
+  dlg.setTitle("Compiling");
+  dlg.setMessage("Building...")
+  dlg.setMax(100);
+  dlg.show()
+  
+  runner = Runnable(function()
+    dlg.setCancelable(false);
+    result = pcall(build, context, dlg, project, externaldir)
+    dlg.setCancelable(true);
+    if not result[0] then
+      file_utils.writeFile(externaldir .. "/build-error.txt", result[1])
+      dlg.setMessage("error: " .. str(result[1]))
+    end
+  end)
+  
+  thread = Thread(runner)
+  thread.start()
+end
+
+
+function build(context, dlg, project, externaldir)
+  dlg.setMessage("Preparing build...")
+
+  saynaadir = context.getSaynaaDir()
+
   libPath = context.getApplicationInfo().nativeLibraryDir
   aapt2 = libPath .. "/libaapt2.so"
   aapt2sh = saynaadir .. "/res/aapt2.sh"
 
-  framezip = saynaadir ..  "/res/frame.zip"
-  resourcezip = saynaadir ..  "/res/resources.zip"
-  
-  android = saynaadir .. "/res/android.jar"
-  file_dir = str(context.getFilesDir().getParentFile())
-  app_cache = file_dir .. "/app_cache"
+  framezip = saynaadir .. "/res/frame.zip"
+  resourcezip = saynaadir .. "/res/resources.zip"
 
-  tmp_cache = app_cache
-  tmp_assets = tmp_cache .. "/assets"
-  iconpath = tmp_assets .. "/" .. config.app.icon
+  androidjar = saynaadir .. "/res/android.jar"
+  build_dir = externaldir .. "/.build"
+  output = externaldir .. "/.bin"
 
-  redirect = app_cache .. "/redirect.txt"
+  tmp_assets = build_dir .. "/assets"
+  aap2log = build_dir .. "/aapt2.log"
 
-
-  os.system("rm -r $app_cache")
-  os.system("mkdir -p $tmp_assets")
-  
-  if(!path.exists(output)) then
-    os.mkdir(output)
+  cfg = package.loadfile(project + "/app.cfg")
+  if not cfg is Module then
+    dlg.setMessage("build failed: app.cfg is not Module.")
+    return
   end
   
-  if(!path.isdir(output))
-    error("Something Wrong!")
+  cfg_globals = cfg.globals()
+  if not (cfg_globals.has("app") and cfg_globals.get("app") is Map) then
+    dlg.setMessage("Build failed: Missing or invalid 'app' map in app.cfg. Expected a Map.")
+    return
+  end
+  
+  app = cfg_globals.get("app")
+  if not (app.has("name") and app.get("name") is String) then
+    dlg.setMessage("Build failed: Missing or invalid 'name' in app configuration.")
+    return
+  end
+  appname = app.get("name")
+
+  if not (app.has("package") and app.get("package") is String) then
+    dlg.setMessage("Build failed: Missing or invalid 'package' in app configuration.")
+    return
+  end
+  pkgname = app.get("package")
+
+  dlg.setMessage("Preparing build directory...")
+  FileUtil.deleteFile(build_dir)
+  FileUtil.makeDir(tmp_assets)
+
+  if not path.exists(output) then
+    FileUtil.makeDir(output)
   end
 
-  file_utils.compileCode(srcpath, tmp_assets)
+  if not path.isdir(output) then
+    dlg.setMessage("Invalid output directory.")
+    return
+  end
 
-  src = app_cache .. "/resources"
+  dlg.setMessage("Copying project files...")
+  FileUtil.copyDir(project, tmp_assets)
+  
+  if bytecode_utils.isBytecodeEnabled(context) then
+    dlg.setMessage("Compiling Saynaa code...")
+    
+    if not bytecode_utils.compileCode(tmp_assets) then
+      dlg.setMessage("Failed to compile Saynaa code.")
+      return
+    end
+    
+    dlg.setMessage("Saynaa code compiled successfully.")
+  end
+
+  dlg.setMessage("Extracting Android resources...")
+  src = build_dir .. "/resources"
   Zip.ZipFile(resourcezip, "r").extractall(src)
   
-  frame = app_cache .. "/frame"
+  dlg.setMessage("Extracting Android framework...")
+  frame = build_dir .. "/frame"
   Zip.ZipFile(framezip, "r").extractall(frame)
   
   launcher = src + "/res/drawable/ic_launcher.png"
   strings = src + "/res/values/strings.xml"
   
+  dlg.setMessage("Configuring application...")
+  
   content = file_utils.readFile(strings)
-  content = content.replace("AppName", config.app.name)
+  content = content.replace("AppName", appname)
   file_utils.writeFile(strings, content)
   
-  if os.system(" cp $iconpath $launcher") != 0
-    dlg.setMessage("failed to add icon.png")
+  if app.has("icon") and app.get("icon") is String then
+    iconpath = tmp_assets .. "/" .. app.get("icon")
+    FileUtil.copyFile(iconpath, launcher)
   end
 
-  cfg = config
-  apkname = config.app.name
-  apkpath = output .. "/$apkname-release.apk"
+  apkpath = output .. "/$appname-release.apk"
 
   res = src .. "/res"
-  compiled = tmp_cache .. "/res.zip"
+  compiled = build_dir .. "/res.zip"
+
+  dlg.setMessage("Compiling Android resources...")
 
   cmd  = "--aapt2 $aapt2 --compile"
   cmd += " --dir $res -o $compiled"
-  if os.system("sh $aapt2sh $cmd &>$redirect") != 0 then
-    dlg.setMessage("failed to compile")
+  
+  if os.system("sh $aapt2sh $cmd &>>$aap2log") != 0 then
+    dlg.setMessage("Failed to compile Android resources.")
     return
   end
   
-  dlg.setMessage("aapt2 compiling successful")
-  
+  dlg.setMessage("Android resources compiled successfully.")
+
   manifest = src .. "/AndroidManifest.xml"
   
-  content = file_utils.readFile(manifest)
-  content = content.replace("com.package.name", cfg.app.package)
+  dlg.setMessage("Configuring Android manifest...")
   
-  for i in cfg.permissions do
-   // <uses-permission android:name="android.permission.INTERNET" />
-   if validator.is_invalid_permission(i) then
-     dlg.setMessage("got Invalid permission (ignoring)")
-     continue
-   end
-   
-   if content.find(i) != -1 then
-     continue
-   end
-   
-   permission = "<uses-permission\n\t\tandroid:name=\"$i\"/>\n\t"
-   content = content.replace("<application", permission .. "<application", 1)
+  content = file_utils.readFile(manifest)
+  content = content.replace("com.package.name", pkgname)
+  
+  if cfg_globals.has("permissions") and cfg_globals.get("permissions") is List then
+    for i in cfg_globals.get("permissions") do
+      if validator.is_invalid_permission(i) then
+        dlg.setMessage("Invalid permission ignored: $i")
+        continue
+      end
+    
+      if content.find(i) != -1 then
+        continue
+      end
+    
+      permission = "<uses-permission\n\t\tandroid:name=\"$i\"/>\n\t"
+      content = content.replace("<application", permission .. "<application", 1)
+    end
   end
   
   file_utils.writeFile(manifest, content)
+
+  # default value
+  min_sdk = 21
+  target_sdk = 34
+  version_code = 1
+  version_name = "1.0"
   
+  if cfg_globals.has("android") and cfg_globals.get("android") is Map then
+    android = cfg_globals.get("android")
+    if android.has("minSdk") and android.get("minSdk") is Number then
+      min_sdk = android.get("minSdk")
+    end
+    
+    if android.has("targetSdk") and android.get("targetSdk") is Number then
+      target_sdk = android.get("targetSdk")
+    end
+  end
   
-  min_sdk = cfg.android.minSdk
-  target_sdk = cfg.android.targetSdk
-  version_code = cfg.app.versionCode
-  version_name = cfg.app.versionName
-  resources = tmp_cache .. "/generated.apk"
+  if app.has("versionCode") and app.get("versionCode") is Number then
+    version_code = app.get("versionCode")
+  end
   
+  if app.has("versionName") and app.get("versionName") is String then
+    version_name = app.get("versionName")
+  end
+  
+  resources = build_dir .. "/generated.apk"
+  
+  dlg.setMessage("Linking Android resources...")
+
   cmd  = "--aapt2 $aapt2 --link --auto-add-overlay"
-  cmd += " --manifest $manifest -I $android"
+  cmd += " --manifest $manifest -I $androidjar"
   cmd += " --min-sdk-version $min_sdk --target-sdk-version $target_sdk"
   cmd += " --version-code $version_code --version-name $version_name"
   cmd += " -R $compiled -o $resources"
 
-  if os.system("sh $aapt2sh $cmd &>$redirect") != 0 then
-    dlg.setMessage("failed to link")
+  if os.system("sh $aapt2sh $cmd &>>$aap2log") != 0 then
+    dlg.setMessage("Failed to link Android resources.")
     return
   end
   
-  dlg.setMessage("aapt2 linking successful")
+  dlg.setMessage("Android resources linked successfully.")
   
   
+  dlg.setMessage("Adding application files...")
   file_utils.addZipFolder(resources, null, frame)
   
+  dlg.setMessage("Adding application assets...")
   file_utils.addZipFolder(resources, "assets/", tmp_assets)
   
-  dlg.setMessage("Signature starts...")
+  dlg.setMessage("Signing APK...")
   
-  signer = Signer();
-  signer.setInputApk(resources);
-  signer.setOutputApk(apkpath);
-  signer.setV1SigningEnabled(true);
-  signer.setV2SigningEnabled(true);
-  signer.setV3SigningEnabled(true);
-  signer.setV4SigningEnabled(false);
+  signer = Signer()
+  signer.setInputApk(resources)
+  signer.setOutputApk(apkpath)
+  signer.setKeyPath(saynaadir .. "/keys");
+  signer.setKeyName("testkey");
+  signer.setV1SigningEnabled(true)
+  signer.setV2SigningEnabled(true)
+  signer.setV3SigningEnabled(true)
+  signer.setV4SigningEnabled(false)
   signer.sign()
-  dlg.setMessage("Signature finished")
+  
+  dlg.setMessage("APK signed successfully.")
+  
   dlg.dismiss()
   permissions.installApk(context, apkpath)
 end
