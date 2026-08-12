@@ -265,6 +265,7 @@ function newProject()
   cancel = objects.cancel
   appName = objects.appName
   packageName = objects.packageName
+  packageName.setText("com.example.myapp" .. math.rand())
 
   create.setOnClickListener({
     onClick: function(v)
