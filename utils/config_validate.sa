@@ -1,0 +1,91 @@
+import package, validator, path
+
+function getConfig(project)
+  cfg = package.loadfile(project + "/app.cfg")
+
+  cfg_globals = cfg.globals()
+  if not (cfg_globals.has("app") and cfg_globals.get("app") is Map) then
+    error("Missing or invalid 'app' map in app.cfg. Expected a Map.")
+    return
+  end
+  
+  app = cfg_globals.get("app")
+  if not (app.has("name") and app.get("name") is String) then
+    error("Missing or invalid 'name' in app configuration.")
+    return
+  end
+  _appname = app.get("name")
+
+  if not (app.has("package") and app.get("package") is String) then
+    error("Missing or invalid 'package' in app configuration.")
+    return
+  end
+  _pkgname = app.get("package")
+
+  _appicon = null
+
+  if app.has("icon") and app.get("icon") is String then
+    iconpath = project .. "/" .. app.get("icon")
+    if path.exists(iconpath) and path.isfile(iconpath) then
+      _appicon = iconpath
+    end
+  end
+
+  _permissions = []
+
+  if cfg_globals.has("permissions") and cfg_globals.get("permissions") is List then
+    for i in cfg_globals.get("permissions") do
+      if validator.is_invalid_permission(i) then
+        //error("Invalid permission ignored: $i")
+        continue
+      end
+      _permissions.append(i)
+    end
+  end
+
+  _debug = false
+  _minSdk = 21
+  _targetSdk = 34
+  _versionCode = 1
+  _versionName = "1.0"
+
+  
+  if cfg_globals.has("build") and cfg_globals.get("build") is Map then
+    build = cfg_globals.get("build")
+    if build.has("debug") and build.get("debug") is Bool then
+      _debug = build.get("debug")
+    end
+  end
+
+
+  if cfg_globals.has("android") and cfg_globals.get("android") is Map then
+    android = cfg_globals.get("android")
+    if android.has("minSdk") and android.get("minSdk") is Number then
+      _minSdk = android.get("minSdk")
+    end
+    
+    if android.has("targetSdk") and android.get("targetSdk") is Number then
+      _targetSdk = android.get("targetSdk")
+    end
+  end
+  
+  if app.has("versionCode") and app.get("versionCode") is Number then
+    _versionCode = app.get("versionCode")
+  end
+  
+  if app.has("versionName") and app.get("versionName") is String then
+    _versionName = app.get("versionName")
+  end
+  
+  return {
+    appname: _appname,
+    pkgname: _pkgname,
+    appicon: _appicon,
+    minSdk: _minSdk,
+    targetSdk: _targetSdk,
+    debugmode: _debug,
+    versionCode: _versionCode,
+    versionName: _versionName,
+    permissions: _permissions
+  }
+end

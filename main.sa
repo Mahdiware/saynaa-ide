@@ -112,7 +112,8 @@ function ShareProject(context, index)
   runner = Runnable(function()
     dlg.setCancelable(false);
     file_utils.createDirectory(sharedir)
-    sharefile = sharedir .. "/" .. appData[index].appname .. ".syp"
+    sharefile = sharedir .. "/" .. appData[index].appname .. "_" .. appData[index].versionname .. ".syp"
+    FileUtil.deleteFile(sharefile)
     file_utils.addZipFolder(sharefile, null, projects[index])
     permissions.shareProject(activity, sharefile)
     dlg.setCancelable(true);
@@ -127,11 +128,16 @@ function fileMenuBuilder(index)
   callback = {
     onMenuItemClick: function(item)
       id = item.getItemId()
+
       if id == 0 then
-        apkbuilder.BuildApk(activity, projects[index])
+        b = Bundle()
+        b.putString('project', projects[index])
+        activity.newActivity("properties", b)
       elif id == 1 then
-        ShareProject(activity, index)
+        apkbuilder.BuildApk(activity, projects[index])
       elif id == 2 then
+        ShareProject(activity, index)
+      elif id == 3 then
         deleteProject(index)
       end
       
@@ -144,10 +150,10 @@ function fileMenuBuilder(index)
       pop=PopupMenu(activity, v)
       menu=pop.getMenu()
   
-      menu.add(0, 0, 0, "Build")
-      //menu.add(0, 1, 0, "Clone")
-      menu.add(0, 1, 0, "Share")
-      menu.add(0, 2, 0, "Delete")
+      menu.add(0, 0, 0, "Config")
+      menu.add(0, 1, 0, "Build")
+      menu.add(0, 2, 0, "Share")
+      menu.add(0, 3, 0, "Delete")
       
       pop.setOnMenuItemClickListener(callback)
       pop.show();
@@ -162,6 +168,7 @@ function getAppData(projects)
     cfg = package.loadfile(path + "/app.cfg")
     data[index] = {
       appname : cfg.app.name,
+      versionname: cfg.app.versionName,
       appicon : path .. "/" .. cfg.app.icon,
       appversion : "Version: " .. cfg.app.versionName,
       package : "Package name: " .. cfg.app.package,
@@ -365,7 +372,10 @@ function onCreate(bundle)
   
   app_list.setOnItemLongClickListener(({
     onItemLongClick: function(parent, view, position, id)
-      deleteProject(position)
+      //deleteProject(position)
+      b = Bundle()
+      b.putString('project', projects[position])
+      activity.newActivity("properties", b)
       return true
     end
   }))

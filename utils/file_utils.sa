@@ -55,7 +55,8 @@ function addZipHelper(zip, location, map)
           if i.type == "directory" then
             addZipHelper(zip, _path + "/", i)
           else
-            zip.write(i.path, _path)
+            // 9 means: MZ_BEST_COMPRESSION
+            zip.write(i.path, _path, 9)
           end
         end
       end

@@ -1,4 +1,4 @@
-import java, file_utils, dialog_utils
+import java, file_utils, dialog_utils, config_validate
 import bytecode_utils, validator, Zip
 import os, path, permissions, package
 
@@ -52,30 +52,16 @@ function build(context, dlg, project, externaldir)
   tmp_assets = build_dir .. "/assets"
   aap2log = build_dir .. "/aapt2.log"
 
-  cfg = package.loadfile(project + "/app.cfg")
-  if not cfg is Module then
-    dlg.setMessage("build failed: app.cfg is not Module.")
-    return
-  end
-  
-  cfg_globals = cfg.globals()
-  if not (cfg_globals.has("app") and cfg_globals.get("app") is Map) then
-    dlg.setMessage("Build failed: Missing or invalid 'app' map in app.cfg. Expected a Map.")
-    return
-  end
-  
-  app = cfg_globals.get("app")
-  if not (app.has("name") and app.get("name") is String) then
-    dlg.setMessage("Build failed: Missing or invalid 'name' in app configuration.")
-    return
-  end
-  appname = app.get("name")
+  result = pcall(config_validate.getConfig, project)
 
-  if not (app.has("package") and app.get("package") is String) then
-    dlg.setMessage("Build failed: Missing or invalid 'package' in app configuration.")
+  if not result[0] then
+    dlg.setMessage("Build failed: " .. str(result[1]))
     return
   end
-  pkgname = app.get("package")
+  config = result[1]
+
+  appname = config.appname
+  pkgname = config.pkgname
 
   dlg.setMessage("Preparing build directory...")
   FileUtil.deleteFile(build_dir)
@@ -121,9 +107,8 @@ function build(context, dlg, project, externaldir)
   content = content.replace("AppName", appname)
   file_utils.writeFile(strings, content)
   
-  if app.has("icon") and app.get("icon") is String then
-    iconpath = tmp_assets .. "/" .. app.get("icon")
-    FileUtil.copyFile(iconpath, launcher)
+  if config.appicon is String then
+    FileUtil.copyFile(config.appicon, launcher)
   end
 
   apkpath = output .. "/$appname-release.apk"
@@ -150,49 +135,28 @@ function build(context, dlg, project, externaldir)
   content = file_utils.readFile(manifest)
   content = content.replace("com.package.name", pkgname)
   
-  if cfg_globals.has("permissions") and cfg_globals.get("permissions") is List then
-    for i in cfg_globals.get("permissions") do
-      if validator.is_invalid_permission(i) then
-        dlg.setMessage("Invalid permission ignored: $i")
-        continue
-      end
-    
-      if content.find(i) != -1 then
-        continue
-      end
-    
-      permission = "<uses-permission\n\t\tandroid:name=\"$i\"/>\n\t"
-      content = content.replace("<application", permission .. "<application", 1)
+  for i in config.permissions do
+    if validator.is_invalid_permission(i) then
+      dlg.setMessage("Invalid permission ignored: $i")
+      continue
     end
+    
+    if content.find(i) != -1 then
+      continue
+    end
+    
+    permission = "<uses-permission\n\t\tandroid:name=\"$i\"/>\n\t"
+    content = content.replace("<application", permission .. "<application", 1)
   end
   
   file_utils.writeFile(manifest, content)
 
   # default value
-  min_sdk = 21
-  target_sdk = 34
-  version_code = 1
-  version_name = "1.0"
-  
-  if cfg_globals.has("android") and cfg_globals.get("android") is Map then
-    android = cfg_globals.get("android")
-    if android.has("minSdk") and android.get("minSdk") is Number then
-      min_sdk = android.get("minSdk")
-    end
-    
-    if android.has("targetSdk") and android.get("targetSdk") is Number then
-      target_sdk = android.get("targetSdk")
-    end
-  end
-  
-  if app.has("versionCode") and app.get("versionCode") is Number then
-    version_code = app.get("versionCode")
-  end
-  
-  if app.has("versionName") and app.get("versionName") is String then
-    version_name = app.get("versionName")
-  end
-  
+  min_sdk = config.minSdk
+  target_sdk = config.targetSdk
+  version_code = config.versionCode
+  version_name = config.versionName
+
   resources = build_dir .. "/generated.apk"
   
   dlg.setMessage("Linking Android resources...")

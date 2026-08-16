@@ -6,20 +6,43 @@ R_attr = java.bindClass('android.R$attr')
 TypedValue = java.bindClass('android.util.TypedValue')
 Configuration = java.bindClass("android.content.res.Configuration")
 Color = java.bindClass("android.graphics.Color")
-context = java.context
 
 lightmode = {
-  secondary: 0xFF666666,
-  background: 0xFFFFFFFF,
-  cards: 0xFFF5F5F5,
-  text: 0xFF000000,
+  primary: 0xFF3F51B5,
+  secondary: 0xFF5F6B7A,
+
+  background: 0xFFF6F9FF,
+  cards: 0xFFE6EFF8,
+
+  text: 0xFF172033,
+  textSecondary: 0xFF5F6B7A,
+
+  divider: 0xFFD7E0EA,
+  disabled: 0xFF9AA6B2,
+
+  success: 0xFF2E7D32,
+  warning: 0xFFED8B00,
+  error: 0xFFD32F2F,
+  info: 0xFF1976D2,
 }
 
 darkmode = {
-  secondary: 0xFFAAAAAA,
-  background: 0xFf121212,
+  primary: 0xFF8C9EFF,
+  secondary: 0xFFB0BAC7,
+
+  background: 0xFF10141C,
   cards: 0xFF1E1E1E,
-  text: 0xFFFFFFFF,
+
+  text: 0xFFF5F7FA,
+  textSecondary: 0xFFB0BAC7,
+
+  divider: 0xFF303A48,
+  disabled: 0xFF687383,
+
+  success: 0xFF66BB6A,
+  warning: 0xFFFFB74D,
+  error: 0xFFEF5350,
+  info: 0xFF64B5F6,
 }
 
 class ThemeManager

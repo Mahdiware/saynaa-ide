@@ -826,7 +826,6 @@ class LoadLayout
   
     items = node.get('items')
     if items != null then
-      //list = java.new('java.util.ArrayList', items)
       adapter = ArrayAdapter(this.context, AndroidRLayout.simple_list_item_1, items)
       view.setAdapter(adapter)
     end
@@ -836,10 +835,18 @@ class LoadLayout
       value = this.data.get(node_id)
       if value != null then
         if value is String then
-          if java.instanceof(view, TextView) then
-            view.setText(value)
-          elif java.instanceof(view, ImageView) then
+          if java.instanceof(view, ImageView) then
             this.apply_image(view, value)
+          elif java.instanceof(view, TextView) then
+            view.setText(value)
+          end
+        elif value is Bool then
+          if java.instanceof(view, CompoundButton) then
+            view.setChecked(value)
+          end
+        elif value is Number then
+          if java.instanceof(view, ProgressBar) then
+            view.setProgress(value)
           end
         elif value is Map then
           this.apply_attrs(view, value)

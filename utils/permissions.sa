@@ -75,3 +75,142 @@ function shareProject(context, projectFile)
   chooser = Intent.createChooser(intent, "Share Saynaa Project")
   context.startActivity(chooser)
 end
+
+
+ANDROID_PERMISSIONS = [
+  # Storage & Media
+  "android.permission.READ_EXTERNAL_STORAGE",
+  "android.permission.WRITE_EXTERNAL_STORAGE",
+  "android.permission.READ_MEDIA_IMAGES",
+  "android.permission.READ_MEDIA_VIDEO",
+  "android.permission.READ_MEDIA_AUDIO",
+  "android.permission.ACCESS_MEDIA_LOCATION",
+  "android.permission.MANAGE_EXTERNAL_STORAGE",
+
+  # Camera & Microphone
+  "android.permission.CAMERA",
+  "android.permission.RECORD_AUDIO",
+
+  # Location
+  "android.permission.ACCESS_COARSE_LOCATION",
+  "android.permission.ACCESS_FINE_LOCATION",
+  "android.permission.ACCESS_BACKGROUND_LOCATION",
+
+  # Network
+  "android.permission.INTERNET",
+  "android.permission.ACCESS_NETWORK_STATE",
+  "android.permission.ACCESS_WIFI_STATE",
+  "android.permission.CHANGE_WIFI_STATE",
+  "android.permission.CHANGE_NETWORK_STATE",
+
+  # Bluetooth
+  "android.permission.BLUETOOTH",
+  "android.permission.BLUETOOTH_ADMIN",
+  "android.permission.BLUETOOTH_CONNECT",
+  "android.permission.BLUETOOTH_SCAN",
+  "android.permission.BLUETOOTH_ADVERTISE",
+
+  # NFC
+  "android.permission.NFC",
+  "android.permission.NFC_TRANSACTION_EVENT",
+
+  # Phone
+  "android.permission.READ_PHONE_STATE",
+  "android.permission.READ_PHONE_NUMBERS",
+  "android.permission.CALL_PHONE",
+  "android.permission.ANSWER_PHONE_CALLS",
+  "android.permission.READ_CALL_LOG",
+  "android.permission.WRITE_CALL_LOG",
+  "android.permission.ADD_VOICEMAIL",
+  "android.permission.USE_SIP",
+
+  # Contacts
+  "android.permission.READ_CONTACTS",
+  "android.permission.WRITE_CONTACTS",
+  "android.permission.GET_ACCOUNTS",
+
+  # SMS
+  "android.permission.READ_SMS",
+  "android.permission.RECEIVE_SMS",
+  "android.permission.SEND_SMS",
+  "android.permission.RECEIVE_MMS",
+  "android.permission.RECEIVE_WAP_PUSH",
+
+  # Calendar
+  "android.permission.READ_CALENDAR",
+  "android.permission.WRITE_CALENDAR",
+
+  # Notifications
+  "android.permission.POST_NOTIFICATIONS",
+
+  # Power & Battery
+  "android.permission.WAKE_LOCK",
+  "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+
+  # Boot & Startup
+  "android.permission.RECEIVE_BOOT_COMPLETED",
+
+  # Vibration
+  "android.permission.VIBRATE",
+
+  # Authentication & Biometrics
+  "android.permission.USE_BIOMETRIC",
+  "android.permission.USE_FINGERPRINT",
+
+  # Overlay & Display
+  "android.permission.SYSTEM_ALERT_WINDOW",
+  "android.permission.EXPAND_STATUS_BAR",
+
+  # App Installation & Management
+  "android.permission.REQUEST_INSTALL_PACKAGES",
+  "android.permission.REQUEST_DELETE_PACKAGES",
+  "android.permission.QUERY_ALL_PACKAGES",
+
+  # System Settings
+  "android.permission.WRITE_SETTINGS",
+  "android.permission.CHANGE_CONFIGURATION",
+
+  # Audio
+  "android.permission.MODIFY_AUDIO_SETTINGS",
+
+  # Foreground Services
+  "android.permission.FOREGROUND_SERVICE",
+  "android.permission.FOREGROUND_SERVICE_CAMERA",
+  "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+  "android.permission.FOREGROUND_SERVICE_LOCATION",
+  "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE",
+  "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+  "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+  "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+
+  # Sensors & Activity
+  "android.permission.BODY_SENSORS",
+  "android.permission.BODY_SENSORS_BACKGROUND",
+  "android.permission.ACTIVITY_RECOGNITION",
+  "android.permission.HIGH_SAMPLING_RATE_SENSORS",
+
+  # Alarms
+  "android.permission.SET_ALARM",
+  "android.permission.USE_EXACT_ALARM",
+  "android.permission.SCHEDULE_EXACT_ALARM",
+
+  # Wallpaper
+  "android.permission.SET_WALLPAPER",
+  "android.permission.SET_WALLPAPER_HINTS",
+
+  # Flashlight
+  "android.permission.FLASHLIGHT",
+
+  # Notification Policy
+  "android.permission.ACCESS_NOTIFICATION_POLICY",
+
+  # Wi-Fi
+  "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+
+  # Location Extras
+  "android.permission.ACCESS_LOCATION_EXTRA_COMMANDS",
+
+  # Companion Devices
+  "android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND",
+  "android.permission.REQUEST_COMPANION_USE_DATA_IN_BACKGROUND",
+]

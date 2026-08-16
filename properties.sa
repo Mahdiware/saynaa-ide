@@ -1,0 +1,70 @@
+import "android.widget.*"
+import "android.view.*"
+import "android.text.*"
+import "android.net.Uri"
+import "android.content.Intent"
+import "com.mahdiware.FloatingEditText"
+import "com.android.saynaa.adapter.*"
+
+import utils.ui_utils, utils.permissions, utils.config_validate
+
+project = null
+config = null
+
+function toast(msg)
+	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+end
+
+function getPermissions(config)
+  data = []
+  for i in permissions.ANDROID_PERMISSIONS do
+    isChecked = false
+    if config is Map and config.permissions is List then
+      isChecked = config.permissions.find(i) != -1
+    end
+    
+    data.append({ title: {text: i, checked: isChecked } })
+  end
+
+  return data
+end
+  
+
+function onActivityResult(requestCode, resultCode, data)
+  if requestCode == 1001 and resultCode == -1 and data != null then
+    uri = data.getData()
+
+    if uri != null then
+      image.setImageURI(uri)
+    end
+  end
+end
+
+function onCreate(bundle)
+  if bundle != null then
+    project = bundle.getString("project")
+  end
+  toast("This page is currently UI-only and not functional yet. It’s on the TODO list.")
+  
+  config = config_validate.getConfig(project)
+
+  root = loadlayout(activity, load(saynaadir .. "/properties_layout.ly"))
+  activity.setContentView(root)
+  
+  adapter = SaynaaAdapter(activity, load(saynaadir .. "/properties_items.ly"), getPermissions(config))
+  perm_list.setAdapter(adapter)
+  
+  image.setOnClickListener({
+    onClick: function(v)
+      intent = Intent(Intent.ACTION_PICK)
+      intent.setDataAndType(Uri.parse("content://media/external/images/media"),"image/*")
+
+      pm = activity.getPackageManager()
+      if intent.resolveActivity(pm) != null then
+        activity.startActivityForResult(intent, 1001)
+      else
+        toast("No gallery application found")
+      end
+    end
+  })
+end
