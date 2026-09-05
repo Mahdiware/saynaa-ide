@@ -1,9 +1,11 @@
 import package, validator, path
 
 function getConfig(project)
-  cfg = package.loadfile(project + "/app.cfg")
+  // 2 means create new module
+  // without parent context
+  cfg = loadfile(project + "/app.cfg", 2)
 
-  cfg_globals = cfg.globals()
+  cfg_globals = cfg.globals
   if not (cfg_globals.has("app") and cfg_globals.get("app") is Map) then
     error("Missing or invalid 'app' map in app.cfg. Expected a Map.")
     return

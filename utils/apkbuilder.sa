@@ -3,14 +3,13 @@ import bytecode_utils, validator, Zip
 import os, path, permissions, package
 
 File = java.bindClass('java.io.File')
-FileUtil = java.bindClass("com.android.saynaa.utils.FileUtil")
-Signer = java.bindClass("apksigner.command.Signer")
+FileUtil = java.bindClass("com.saynaa.utils.FileUtil")
 
 function BuildApk(context, project)
   Runnable = java.bindClass("java.lang.Runnable")
   Thread = java.bindClass("java.lang.Thread")
   
-  externaldir = context.getSaynaaExtDir()
+  externaldir = "/storage/emulated/0/.SaynaaIDE" #activity.getSaynaaExtDir()
   
   dlg = dialog_utils.createProgressDialog(context);
   dlg.setTitle("Compiling");
@@ -36,20 +35,18 @@ end
 function build(context, dlg, project, externaldir)
   dlg.setMessage("Preparing build...")
 
-  saynaadir = context.getSaynaaDir()
+  saynaadir = java.saynaadir
 
   libPath = context.getApplicationInfo().nativeLibraryDir
   aapt2 = libPath .. "/libaapt2.so"
   aapt2sh = saynaadir .. "/res/aapt2.sh"
-
-  framezip = saynaadir .. "/res/frame.zip"
-  resourcezip = saynaadir .. "/res/resources.zip"
 
   androidjar = saynaadir .. "/res/android.jar"
   build_dir = externaldir .. "/.build"
   output = externaldir .. "/.bin"
 
   tmp_assets = build_dir .. "/assets"
+  jniLibs    = tmp_assets .. "/jniLibs"
   aap2log = build_dir .. "/aapt2.log"
 
   result = pcall(config_validate.getConfig, project)
@@ -59,6 +56,8 @@ function build(context, dlg, project, externaldir)
     return
   end
   config = result[1]
+
+  framezip = saynaadir .. "/res/" .. "frame.zip"
 
   appname = config.appname
   pkgname = config.pkgname
@@ -90,16 +89,12 @@ function build(context, dlg, project, externaldir)
     dlg.setMessage("Saynaa code compiled successfully.")
   end
 
-  dlg.setMessage("Extracting Android resources...")
-  src = build_dir .. "/resources"
-  Zip.ZipFile(resourcezip, "r").extractall(src)
-  
   dlg.setMessage("Extracting Android framework...")
   frame = build_dir .. "/frame"
   Zip.ZipFile(framezip, "r").extractall(frame)
   
-  launcher = src + "/res/drawable/ic_launcher.png"
-  strings = src + "/res/values/strings.xml"
+  launcher = frame + "/res/drawable/ic_launcher.png"
+  strings = frame + "/res/values/strings.xml"
   
   dlg.setMessage("Configuring application...")
   
@@ -113,7 +108,7 @@ function build(context, dlg, project, externaldir)
 
   apkpath = output .. "/$appname-release.apk"
 
-  res = src .. "/res"
+  res = frame .. "/res"
   compiled = build_dir .. "/res.zip"
 
   dlg.setMessage("Compiling Android resources...")
@@ -121,14 +116,14 @@ function build(context, dlg, project, externaldir)
   cmd  = "--aapt2 $aapt2 --compile"
   cmd += " --dir $res -o $compiled"
   
-  if os.system("sh $aapt2sh $cmd &>>$aap2log") != 0 then
+  if os.system("sh '$aapt2sh' $cmd &>>$aap2log") != 0 then
     dlg.setMessage("Failed to compile Android resources.")
     return
   end
   
   dlg.setMessage("Android resources compiled successfully.")
 
-  manifest = src .. "/AndroidManifest.xml"
+  manifest = frame .. "/AndroidManifest.xml"
   
   dlg.setMessage("Configuring Android manifest...")
   
@@ -162,12 +157,12 @@ function build(context, dlg, project, externaldir)
   dlg.setMessage("Linking Android resources...")
 
   cmd  = "--aapt2 $aapt2 --link --auto-add-overlay"
-  cmd += " --manifest $manifest -I $androidjar"
+  cmd += " --manifest $manifest -I '$androidjar'"
   cmd += " --min-sdk-version $min_sdk --target-sdk-version $target_sdk"
   cmd += " --version-code $version_code --version-name $version_name"
   cmd += " -R $compiled -o $resources"
 
-  if os.system("sh $aapt2sh $cmd &>>$aap2log") != 0 then
+  if os.system("sh '$aapt2sh' $cmd &>>$aap2log") != 0 then
     dlg.setMessage("Failed to link Android resources.")
     return
   end
@@ -176,12 +171,28 @@ function build(context, dlg, project, externaldir)
   
   
   dlg.setMessage("Adding application files...")
-  file_utils.addZipFolder(resources, null, frame)
+  libs = file_utils.collect_libs(jniLibs)
+  file_utils.writeFile(externaldir .. "/note.txt", str(libs))
+  for i in libs do
+    FileUtil.copyFile(jniLibs .. "/" .. i, frame .. "/lib/" .. i)
+  end
+  
+  skipPath = [res, manifest]
+  
+  file_utils.addZipFolder(resources, null, frame, skipPath)
   
   dlg.setMessage("Adding application assets...")
   file_utils.addZipFolder(resources, "assets/", tmp_assets)
   
   dlg.setMessage("Signing APK...")
+  
+  java.loadDex(saynaadir .. "/libs/signer.dex")
+  Signer = java.bindClass("apksigner.command.Signer")
+  
+  if Signer is Null then
+    dlg.setMessage("APK signer is not available.")
+    return
+  end
   
   signer = Signer()
   signer.setInputApk(resources)

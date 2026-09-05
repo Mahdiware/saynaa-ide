@@ -1,21 +1,19 @@
 import "android.widget.*"
-import "androidx.drawerlayout.widget.*"
-import "androidx.cardview.widget.*"
 import "android.view.*"
 import "android.text.*"
 import "android.os.*"
 import "android.graphics.*"
-import "com.android.saynaa.*"
-import "com.android.saynaa.adapter.*"
+import "com.saynaa.adapter.*"
 import "android.content.*"
-import "com.android.saynaa.*"
+import "com.saynaa.view.*"
+import "com.saynaa.CodeEditor"
 import "android.graphics.*"
 import "android.graphics.drawable.*"
 import "android.app.ProgressDialog"
+import "android.view.inputmethod.InputMethodManager"
 import "io.github.rosemoe.sora.widget.schemes.SchemeDarcula"
-import "io.github.rosemoe.sora.widget.*"
-import "io.github.rosemoe.sora.widget.component.*"
-import "com.android.saynaa.utils.FileUtil"
+import "io.github.rosemoe.sora.widget.EditorSearcher"
+import "com.saynaa.utils.FileUtil"
 import utils.file_utils, utils.ui_utils, utils.dialog_utils, utils.apkbuilder
 
 activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -27,7 +25,8 @@ openfile = null
 project = null
 parentDirectory = []
 rootpath = null
-AdapterData = null
+adapter = null
+AdapterData = []
 result = 0
 resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
 
@@ -55,7 +54,8 @@ function fileMenuBuilder(path)
       id = item.getItemId()
       if id == 0 then
         FileUtil.deleteFile(path)
-        refreshDrawerList()
+        openFolder(parentDirectory[-1])
+        adapter.notifyDataSetChanged()
       elif id == 1 then
         renameFile(path.getParent(), path.getName())
       elif id == 2 then
@@ -86,16 +86,19 @@ function fileMenuBuilder(path)
 end
 
 function openFolder(_path)
-  data = [
-    {
-      icon: "icons/folder.png",
-      type: "folder",
-      title: "../",
-      path: _path,
-      subtitle: "Return to parent directory"
-    }
-  ]
-  for i in FileUtil.listDir(_path) do
+  AdapterData.clear()
+  AdapterData.append({
+    icon: "icons/folder.png",
+    type: "folder",
+    title: "../",
+    path: _path,
+    subtitle: "Return to parent directory"
+  })
+  jlist = FileUtil.listDir(_path)
+  length = java.length(jlist)
+  
+  for j in 0..(length) do
+    i = jlist.get(j)
     icon = "icons/file.png"
     type = "file"
     title = i.getName()
@@ -109,9 +112,8 @@ function openFolder(_path)
     modified = FileUtil.formatDate(i.lastModified(), "dd MMM yyyy, hh:mm a")
     filemenu = fileMenuBuilder(i)
 
-    data.append({icon: icon, type: type, title: title, subtitle: modified, path: path, filemenu: filemenu})
+    AdapterData.append({icon: icon, type: type, title: title, subtitle: modified, path: path, filemenu: filemenu})
   end
-  return data
 end
 
 function createFile()
@@ -122,7 +124,7 @@ function createFile()
 
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/createfile.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(loadfile(saynaadir .. "/utils/layout/createfile.ly")))
 
   name = objects.name
   cancel = objects.cancel
@@ -143,7 +145,8 @@ function createFile()
       end
       
       if file_utils.createFile(parent .. "/" .. value) then
-        refreshDrawerList()
+        openFolder(parentDirectory[-1])
+        adapter.notifyDataSetChanged()
       end
       dialog.dismiss()
     end
@@ -164,7 +167,8 @@ function createFile()
       end
       
       if file_utils.createDirectory(parent .. "/" .. value) then
-        refreshDrawerList()
+        openFolder(parentDirectory[-1])
+        adapter.notifyDataSetChanged()
       end
 
       dialog.dismiss()
@@ -182,7 +186,7 @@ end
 function renameFile(parent, originalName)
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/renamefile.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(loadfile(saynaadir .. "/utils/layout/renamefile.ly")))
 
   name = objects.name
   cancel = objects.cancel
@@ -212,7 +216,8 @@ function renameFile(parent, originalName)
         FileUtil.copyFile(src, des)
       end
       FileUtil.deleteFile(src)
-      refreshDrawerList()
+      openFolder(parentDirectory[-1])
+      adapter.notifyDataSetChanged()
 
       dialog.dismiss()
     end
@@ -231,15 +236,15 @@ assert(activity != null, 'activity is null')
 Layout = {
   DrawerLayout,
   id: "mDrawer",
-  load(saynaadir .. "/editor_layout.ly"),
-  load(saynaadir .. "/editor_drawer.ly")
+  loadfile(saynaadir .. "/editor_layout.ly"),
+  loadfile(saynaadir .. "/editor_drawer.ly")
 }
 
 root = loadlayout(activity, Layout)
 assert(root != null, 'loadlayout returned null')
 activity.setContentView(root)
 
-symbols = load(saynaadir .. "/editor_symbols.ly")
+symbols = loadfile(saynaadir .. "/editor_symbols.ly")
 searcher = null
 nonPrintablePaintingFlags = CodeEditor.FLAG_DRAW_WHITESPACE_LEADING | CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
 
@@ -259,14 +264,6 @@ function onKeyDown(c,e)
       return true
     end
   end
-end
-
-function refreshDrawerList()
-  parent = parentDirectory[-1]
-  AdapterData = openFolder(parent)
-
-  adapter = SaynaaAdapter(activity, load(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
-  drawer_list.setAdapter(adapter)
 end
 
 function markSaved(text)
@@ -366,6 +363,7 @@ function onCreate(bundle)
         if id == 0 then
           findreplace.setVisibility(visible)
           findAndReplaceOpen = true
+          find.requestFocus()
         elif id == 1 then
           apkbuilder.BuildApk(activity, project)
         elif id == 2 then
@@ -503,7 +501,11 @@ function onCreate(bundle)
   
   rootpath = project
   parentDirectory = [rootpath]
-  refreshDrawerList()
+
+  openFolder(rootpath)
+
+  adapter = SaynaaAdapter(activity, loadfile(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
+  drawer_list.setAdapter(adapter)
 
   drawer_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
@@ -529,7 +531,8 @@ function onCreate(bundle)
           goto = currect + "/" + data.title
           parentDirectory.append(goto)
         end
-        refreshDrawerList()
+        openFolder(parentDirectory[-1])
+        adapter.notifyDataSetChanged()
       end
     end
   }))

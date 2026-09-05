@@ -66,7 +66,7 @@ return {
             layout_weight: "1",
             textColor: "#FFFFFF",
           },
-                    {
+          {
             CardView,
             layout_height: "65dp",
             PreventCornerOverlap: false,

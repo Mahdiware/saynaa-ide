@@ -1,9 +1,7 @@
-import java
-import os
-import package
+import java, package
 from loadlayout import LoadLayout, loadlayout
 
-saynaadir = activity.getSaynaaDir()
+saynaadir = java.saynaadir
 package.path.append("$saynaadir")
 
 # Classpath prefixes for fallback resolution
@@ -63,11 +61,4 @@ _module._missing = function(name)
             return result[1]
         end
     end
-end
-
-function loadDex(path)
-    if activity == null then
-        assert(false, 'loadDex: activity is null')
-    end
-    return activity.loadDex(path)
 end

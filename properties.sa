@@ -3,30 +3,80 @@ import "android.view.*"
 import "android.text.*"
 import "android.net.Uri"
 import "android.content.Intent"
-import "com.mahdiware.FloatingEditText"
-import "com.android.saynaa.adapter.*"
+import "com.saynaa.view.FloatingEditText"
+import "com.saynaa.adapter.*"
+import "com.saynaa.view.*"
+import "com.saynaa.utils.FileUtil"
+import "java.io.*"
+import "java.nio.file.*"
+import "android.provider.MediaStore"
+import "android.graphics.Bitmap"
 
-import utils.ui_utils, utils.permissions, utils.config_validate
+
+import utils.ui_utils, utils.permissions
+import utils.config_validate,  utils.file_utils
+
+activity.getActionBar().hide();
+result = 0
+resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+
+if resourceId > 0 then
+  result = activity.getResources().getDimensionPixelSize(resourceId);
+end
+
+
 
 project = null
 config = null
+data = []
+
+AllowedPermission = []
 
 function toast(msg)
 	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
 end
 
-function getPermissions(config)
-  data = []
-  for i in permissions.ANDROID_PERMISSIONS do
-    isChecked = false
-    if config is Map and config.permissions is List then
-      isChecked = config.permissions.find(i) != -1
+
+function Helper(i, index)
+  isChecked = AllowedPermission.find(i) != -1
+
+  switch = {
+    text: i,
+    checked: isChecked,
+    onChecked: function(v, checked)
+      reslt = pcall(function() return data[index].title.checked end)
+      if reslt[0] and reslt[1] is Bool then
+        data[index].title.checked = checked
+        index = AllowedPermission.find(i)
+        if checked then
+          if index == -1 then
+            AllowedPermission.append(i)
+          end
+        else
+          if index != -1 then
+            AllowedPermission.pop(index)
+          end
+        end
+      end
     end
-    
-    data.append({ title: {text: i, checked: isChecked } })
+  }
+
+  return {title: switch}
+end
+
+
+function getPermissions(config)
+  result = []
+  
+  if config is Map and config.permissions is List then
+    AllowedPermission = config.permissions
+  end
+  
+  for i in permissions.ANDROID_PERMISSIONS do
+    result.append(Helper(i, result.length))
   end
 
-  return data
+  return result
 end
   
 
@@ -35,7 +85,21 @@ function onActivityResult(requestCode, resultCode, data)
     uri = data.getData()
 
     if uri != null then
+      # Show selected image
       image.setImageURI(uri)
+
+      # Decode URI into Bitmap
+      bitmap = MediaStore.Images.Media.getBitmap(activity.getContentResolver(), uri)
+
+      # Create PNG file
+      outputFile = File(project, "icon.png")
+      output = FileOutputStream(outputFile)
+
+      # Convert Bitmap to PNG
+      bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+
+      output.close()
+      bitmap.recycle()
     end
   end
 end
@@ -44,15 +108,53 @@ function onCreate(bundle)
   if bundle != null then
     project = bundle.getString("project")
   end
-  toast("This page is currently UI-only and not functional yet. It’s on the TODO list.")
-  
-  config = config_validate.getConfig(project)
 
-  root = loadlayout(activity, load(saynaadir .. "/properties_layout.ly"))
+  config = config_validate.getConfig(project)
+  data = getPermissions(config)
+
+  root = loadlayout(activity, loadfile("properties_layout.ly"))
   activity.setContentView(root)
   
-  adapter = SaynaaAdapter(activity, load(saynaadir .. "/properties_items.ly"), getPermissions(config))
+  adapter = SaynaaAdapter(activity, loadfile("properties_items.ly"), data)
   perm_list.setAdapter(adapter)
+  
+  save.setOnClickListener({
+    onClick: function(v)
+    
+    app = {
+      name: appname.getText(),
+      package: pkgname.getText(),
+      versionName: versionName.getText(),
+      versionCode: Number(versionCode.getText()),
+      icon: "icon.png",
+    }
+    
+    android = {
+      minSdk: Number(minSdk.getText()),
+      targetSdk: Number(targetSdk.getText()),
+    }
+
+    build = {
+      debug: debugmode.isChecked(),
+    }
+
+    contents = "app = " .. file_utils.formatter(app)
+    contents += "\n\n"
+    
+    contents += "android = " .. file_utils.formatter(android)
+    contents += "\n\n"
+    
+    contents += "build = " .. file_utils.formatter(build)
+    contents += "\n\n"
+    
+    contents += "permissions = " .. file_utils.formatter(AllowedPermission)
+    contents += "\n"
+    
+    
+    file_utils.writeFile(project .. "/app.cfg", contents)
+    toast("Successful saved")
+    end
+  })
   
   image.setOnClickListener({
     onClick: function(v)

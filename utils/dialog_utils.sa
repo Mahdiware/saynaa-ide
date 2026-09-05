@@ -61,7 +61,7 @@ function dialogMessage(context, title, body)
   theme = themes.ThemeManager(context)
 
   ll = LoadLayout(context)
-  dialog = createDialog(context, theme.getDialogTheme(), ll.createView(load(saynaadir .. "/utils/layout/dialogmessage.ly")))
+  dialog = createDialog(context, theme.getDialogTheme(), ll.createView(loadfile(saynaadir .. "/utils/layout/dialogmessage.ly")))
   
   objects = ll.getObjects()
   objects.title.setText(title)

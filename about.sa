@@ -5,7 +5,6 @@ import "android.graphics.drawable.*"
 import "android.content.*"
 import "android.content.Intent"
 import "android.net.Uri"
-import "app.cfg" as config
 
 import utils.ui_utils
 
@@ -14,7 +13,7 @@ function toast(msg)
 end
 
 function onCreate()
-  root = loadlayout(activity, load(saynaadir .. "/about_layout.ly"))
+  root = loadlayout(activity, loadfile(saynaadir .. "/about_layout.ly"))
   activity.setContentView(root)
 
   Github.setOnClickListener(({

@@ -2,12 +2,69 @@ return {
   LinearLayout,
   layout_width: "match_parent",
   layout_height: "match_parent",
+  orientation: "vertical",
+  {
+    CardView,
+    layout_height: "wrap_content",
+    backgroundColor: theme.colorPrimary,
+    radius: "0dp",
+    CardElevation: "3dp",
+    layout_width: "match_parent",
+    
+    {
+      LinearLayout,
+      layout_width: "match_parent",
+      {
+        LinearLayout,
+        orientation: "horizontal",
+        gravity: "center",
+        layout_height: "56dp",
+        layout_width: "match_parent",
+        
+        {
+          TextView,
+          gravity: "center|left",
+          singleLine: true,
+          layout_marginLeft: "14dp",
+          layout_width: "match_parent",
+          text: activity.getTitle(),
+          id: "title",
+          textSize: "19dp",
+          ellipsize: "end",
+          layout_height: "match_parent",
+          layout_weight: "1",
+          textColor: "#FFFFFF",
+        },
+        {
+          CardView,
+          layout_height: "65dp",
+          PreventCornerOverlap: false,
+          CardElevation: "0dp",
+          layout_marginRight: "4dp",
+          background: "#00000000",
+          radius: "33dp",
+          UseCompatPadding: false,
+          layout_width: "65dp",
+          {
+            ImageView,
+            layout_height: "match_parent",
+            layout_margin: "-10dp",
+            id: "save",
+            background: "#00000000",
+            colorFilter: "#FFFFFFFF",
+            padding: "20dp",
+            src: "icons/save.png",
+            layout_width: "match_parent",
+          },
+        },
+      },
+    },
+  },
   {
     LinearLayout,
     layout_width: "match_parent",
     layout_height: "match_parent",
     orientation: "vertical",
-  
     {
       LinearLayout,
       layout_width: "match_parent",
@@ -38,6 +95,7 @@ return {
         },
         {
           FloatingEditText,
+          id: 'appname',
           text: config.appname,
           hint: "Application name: ",
         },
@@ -49,6 +107,7 @@ return {
         paddingRight: "8dp",
         {
           FloatingEditText,
+          id: 'pkgname',
           text: config.pkgname,
           hint: "Package name: ",
           layout_width: "wrap_content",
@@ -63,6 +122,7 @@ return {
         
         {
           FloatingEditText,
+          id: 'versionName',
           text: config.versionName,
           hint: "Version name: ",
           layout_weight: "1",
@@ -71,6 +131,7 @@ return {
         
         {
           FloatingEditText,
+          id: 'versionCode',
           text: str(config.versionCode),
           hint: "Version code: ",
           inputType: "number",
@@ -87,6 +148,7 @@ return {
         
         {
           FloatingEditText,
+          id: 'minSdk',
           text: str(config.minSdk),
           hint: "Minimum SDK Version: ",
           inputType: "number",
@@ -96,6 +158,7 @@ return {
         
         {
           FloatingEditText,
+          id: 'targetSdk',
           text: str(config.targetSdk),
           hint: "Target SDK Version: ",
           inputType: "number",
@@ -105,13 +168,13 @@ return {
       },
       {
         Switch,
+        id: 'debugmode',
         text: "Debug Mode",
-        padding: "16dp",
-        TextSize: "16sp",
+        padding: "12dp",
+        TextSize: "8sp",
         layout_width: "match_parent",
         checked: config.debugmode,
       },
-      
     },
     {
       ListView,

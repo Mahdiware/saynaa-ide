@@ -19,7 +19,7 @@ function switchItem(itemid, icon, title, desc, checked)
       end
       
       // get switch id in currect module globals and toggle it
-      globals = _module.globals()
+      globals = _module.globals
       if globals.has(itemid) then
         globals.get(itemid).toggle();
       end
@@ -244,7 +244,7 @@ function onCreate(bundle)
     end
   })
   
-  about. setOnClickListener({
+  about.setOnClickListener({
     onClick: function(v)
       activity.newActivity("about")
     end

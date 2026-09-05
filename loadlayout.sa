@@ -25,6 +25,7 @@ Context = java.bindClass('android.content.Context')
 DisplayMetrics = java.bindClass('android.util.DisplayMetrics')
 BitmapFactory = java.bindClass('android.graphics.BitmapFactory')
 BitmapDrawable = java.bindClass('android.graphics.drawable.BitmapDrawable')
+CompoundButton = java.bindClass('android.widget.CompoundButton')
 
 RelativeLayoutRule = {
   layout_above: 2,
@@ -255,11 +256,11 @@ class LoadLayout
     this.WIDTH = out.widthPixels
     this.HEIGHT = out.heightPixels
     
-    this.saynaadir = this.context.getSaynaaDir()
+    this.saynaadir = java.saynaadir
     
     this.module = null
-    this.data = null
     this.next_id = 0x7f000000
+    this.default_nodes = {}
     this.ids = {}
     this.idmap = {}
   end
@@ -268,10 +269,6 @@ class LoadLayout
     this.module = module
   end
 
-  function setData(data)
-    this.data = data
-  end
-  
   function getObjects()
     return this.ids
   end
@@ -285,7 +282,7 @@ class LoadLayout
     if result[0] then
       return result[1]
     else
-      return 0
+      return null
     end
   end
 
@@ -293,7 +290,7 @@ class LoadLayout
     if not value is String then
       return null
     end
-    result = re.extract('^(-?\d+)([A-Za-z]{2})$', value)
+    result = re.extract('^(-?(?:\d+(?:\.\d*)?|\.\d+))([A-Za-z]{2})$', value)
     if result == null then
       return null
     end
@@ -302,7 +299,7 @@ class LoadLayout
     if n == null or ty == null then
       return null
     end
-    return { n, ty }
+    return [n, ty]
   end
   
   function normalizeColor(color)
@@ -334,6 +331,10 @@ class LoadLayout
     return null
   end
   
+  function to_px(value)
+  
+  end
+  
   function parse_size(value)
     if value is Number then
       return value
@@ -354,20 +355,6 @@ class LoadLayout
     typed = this.check_type(value)
     if typed != null then
       return TypedValue.applyDimension(typed[1], typed[0], this.dm)
-    end
-    if value.endswith('dp') then
-      num_str = value.split('dp')[0]
-      num = this.as_numeric(num_str)
-      return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, num, this.dm)
-    end
-    if value.endswith('sp') then
-      num_str = value.split('sp')[0]
-      num = this.as_numeric(num_str)
-      return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, num, this.dm)
-    end
-    if value.endswith('px') then
-      num_str = value.split('px')[0]
-      return this.as_numeric(num_str)
     end
     return this.as_numeric(value)
   end
@@ -495,6 +482,10 @@ class LoadLayout
       percent = this.check_percent(value)
       if percent != null then
         return percent
+      end
+      typed = this.check_type(value)
+      if typed != null then
+        return TypedValue.applyDimension(typed[1], typed[0], this.dm)
       end
     end
     if value is Bool then
@@ -792,7 +783,9 @@ class LoadLayout
     visibility = node.get('visibility')
     if visibility != null then
       if visibility == 'visible' then view.setVisibility(0) end
-      if visibility == 'invisible' then view.setVisibility(4) end
+      if visibility == 'invisible' then
+        view.setVisibility(4)
+      end
       if visibility == 'gone' then view.setVisibility(8) end
     end
   
@@ -823,36 +816,23 @@ class LoadLayout
         view.setOnClickListener(on_click)
       end
     end
+    
+    on_checked = node.get('onChecked')
+    if on_checked != null then
+      view.setClickable(true)
+      if on_checked is Closure then
+        view.setOnCheckedChangeListener({
+          onCheckedChanged: on_checked
+        })
+      else
+        view.setOnCheckedChangeListener(on_checked)
+      end
+    end
   
     items = node.get('items')
     if items != null then
       adapter = ArrayAdapter(this.context, AndroidRLayout.simple_list_item_1, items)
       view.setAdapter(adapter)
-    end
-  
-    node_id = node.get('id')
-    if node_id != null and this.data != null and this.data is Map then
-      value = this.data.get(node_id)
-      if value != null then
-        if value is String then
-          if java.instanceof(view, ImageView) then
-            this.apply_image(view, value)
-          elif java.instanceof(view, TextView) then
-            view.setText(value)
-          end
-        elif value is Bool then
-          if java.instanceof(view, CompoundButton) then
-            view.setChecked(value)
-          end
-        elif value is Number then
-          if java.instanceof(view, ProgressBar) then
-            view.setProgress(value)
-          end
-        elif value is Map then
-          this.apply_attrs(view, value)
-          this.apply_auto_attrs(view, value)
-        end
-      end
     end
   
   end
@@ -919,6 +899,9 @@ class LoadLayout
       view.setId(this.next_id)
       this.ids.setattr(node_id, view)
       this.idmap.setattr(node_id, this.next_id)
+      
+      this.default_nodes.setattr(node_id, node) // ADD THIS: Save the original layout blueprint
+      
       if this.module is Module then
         this.module.define(node_id, view)
       end
@@ -940,6 +923,74 @@ class LoadLayout
   
     return view
   end
+
+  function reset_views_to_defaults(key, view)
+    default_node = this.default_nodes.get(key)
+
+    if java.instanceof(view, View) then
+      // 1. Hard reset the most common properties you change dynamically
+      view.setVisibility(0) // Default to visible
+      
+      if java.instanceof(view, TextView) then 
+        view.setText("") 
+      end
+      if java.instanceof(view, ImageView) then 
+        view.setImageDrawable(null) 
+      end
+      if java.instanceof(view, CompoundButton) then
+        view.setOnCheckedChangeListener(null)
+        view.setChecked(false) 
+      end
+      
+      // 2. Re-apply the original static layout attributes
+      if default_node != null then
+        this.apply_attrs(view, default_node)
+        this.apply_auto_attrs(view, default_node)
+      end
+    end
+  end
+  
+  
+  function bind_value(view, value)
+    if value is String then
+      if java.instanceof(view, ImageView) then
+        this.apply_image(view, value)
+      elif java.instanceof(view, TextView) then
+        view.setText(value)
+      end
+
+    elif value is Bool then
+      if java.instanceof(view, CompoundButton) then
+        view.setChecked(value)
+      end
+
+    elif value is Number then
+      if java.instanceof(view, ProgressBar) then
+        view.setProgress(value)
+      end
+
+    elif value is Map then
+      this.apply_attrs(view, value)
+      this.apply_auto_attrs(view, value)
+    end
+  end
+  
+  function bind(data)
+    if not (data is Map) then
+      return
+    end
+    
+    keys = data.keys
+    for key in keys do
+      view = this.ids.get(key)
+      // ADD THIS: Wipe old data and reset to original layout state first!
+      this.reset_views_to_defaults(key, view)
+
+      if java.instanceof(view, View) then
+        this.bind_value(view, data.get(key))
+      end
+    end
+  end
 end
 
 
@@ -948,14 +999,8 @@ function loadlayout(activity, node, data)
     assert(false, 'loadlayout node: expected Map and got ' .. type(node))
   end
 
-  // Prevent SaynaaAdapter from modifying global variables.
-  // make module null when data is a Map.
-  module = data is Map ? null : activity.getModule()
-
   ll = LoadLayout(activity)
-  ll.setModule(module)
-  ll.setData(data)
-    
+  ll.setModule(java.mainModule)
   return ll.createView(node)
 end
   

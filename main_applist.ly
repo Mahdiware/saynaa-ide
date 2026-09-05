@@ -73,7 +73,7 @@ return {
     layout_height: "65dp",
     CardElevation: "0dp",
     layout_marginRight: "-10dp",
-    background: 0x00000000,
+    background: 0x000000,
     radius: "33dp",
     layout_width: "65dp",
     {

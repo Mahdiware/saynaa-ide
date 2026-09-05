@@ -39,7 +39,7 @@ function installApk(context, apkFile)
 
   uri = null;
   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) then
-    FileProvider = java.bindClass('androidx.core.content.FileProvider')
+    FileProvider = java.bindClass('com.saynaa.provider.FileProvider')
     uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file);
   else
     uri = Uri.fromFile(file);
@@ -62,7 +62,7 @@ function shareProject(context, projectFile)
   uri = null
 
   if Build.VERSION.SDK_INT >= Build.VERSION_CODES.N then
-    FileProvider = java.bindClass("androidx.core.content.FileProvider")
+    FileProvider = java.bindClass("com.saynaa.provider.FileProvider")
     uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file)
   else
     uri = Uri.fromFile(file)

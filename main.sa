@@ -1,23 +1,22 @@
 import "android.widget.*"
-import "androidx.drawerlayout.widget.*"
-import "androidx.cardview.widget.*"
 import "android.view.*"
 import "android.text.*"
 import "android.os.*"
 import "android.graphics.*"
-import "com.android.saynaa.*"
-import "com.android.saynaa.adapter.*"
+import "com.saynaa.*"
+import "com.saynaa.adapter.*"
 import "android.content.*"
 import "android.net.*"
 import "android.graphics.*"
 import "android.graphics.drawable.*"
 import "android.app.AlertDialog"
 import "android.app.*"
-import "com.android.saynaa.utils.FileUtil"
+import "com.saynaa.utils.FileUtil"
+import "com.saynaa.view.*"
 
 import utils.file_utils, utils.dialog_utils, utils.apkbuilder
 import utils.validator, utils.permissions, utils.ui_utils
-import package, os
+import utils.config_validate, package, os
 
 activity.getActionBar().hide();
 
@@ -81,25 +80,25 @@ drawerData = [
 Layout = {
   DrawerLayout,
   id: "mDrawer",
-  load(saynaadir .. "/main_layout.ly"),
-  load(saynaadir .. "/main_drawer.ly")
+  loadfile("main_layout.ly"),
+  loadfile("main_drawer.ly")
 }
 
 assert(activity != null, 'activity is null')
 
 root = loadlayout(activity, Layout)
 assert(root != null, 'loadlayout returned null')
-activity.setContentView(Layout)
+activity.setContentView(root)
 
-externaldir = activity.getSaynaaExtDir()
+externaldir = "/storage/emulated/0/.SaynaaIDE" #activity.getSaynaaExtDir()
 projectdir = externaldir .. "/project"
 sharedir = externaldir .. "/.share"
-projects = null
-appData = null
+appData = []
+app_adapter = null
 
 permissions.requestStoragePermission(activity)
 
-function ShareProject(context, index)
+function ShareProject(context, appinfo)
   Runnable = java.bindClass("java.lang.Runnable")
   Thread = java.bindClass("java.lang.Thread")
 
@@ -111,34 +110,41 @@ function ShareProject(context, index)
   
   runner = Runnable(function()
     dlg.setCancelable(false);
-    file_utils.createDirectory(sharedir)
-    sharefile = sharedir .. "/" .. appData[index].appname .. "_" .. appData[index].versionname .. ".syp"
-    FileUtil.deleteFile(sharefile)
-    file_utils.addZipFolder(sharefile, null, projects[index])
-    permissions.shareProject(activity, sharefile)
+    
+    result = pcall(function()
+      file_utils.createDirectory(sharedir)
+      sharefile = sharedir .. "/" .. appinfo.appname .. "_" .. appinfo.versionname .. ".syp"
+      FileUtil.deleteFile(sharefile)
+      file_utils.addZipFolder(sharefile, null, appinfo.project)
+      permissions.shareProject(activity, sharefile)
+    end)
     dlg.setCancelable(true);
-    dlg.dismiss()
+    if not result[0] then
+      dlg.setMessage("error: " .. str(result[1]))
+    else
+      dlg.dismiss()
+    end
   end)
   
   thread = Thread(runner)
   thread.start()
 end
 
-function fileMenuBuilder(index)
+function fileMenuBuilder(appinfo)
   callback = {
     onMenuItemClick: function(item)
       id = item.getItemId()
 
       if id == 0 then
         b = Bundle()
-        b.putString('project', projects[index])
+        b.putString('project', appinfo.project)
         activity.newActivity("properties", b)
       elif id == 1 then
-        apkbuilder.BuildApk(activity, projects[index])
+        apkbuilder.BuildApk(activity, appinfo.project)
       elif id == 2 then
-        ShareProject(activity, index)
+        ShareProject(activity, appinfo)
       elif id == 3 then
-        deleteProject(index)
+        deleteProject(appinfo)
       end
       
       return true
@@ -161,31 +167,40 @@ function fileMenuBuilder(index)
   }
 end
 
-function getAppData(projects)
-  data = {}
-  index = 0
-  for path in projects do
-    cfg = package.loadfile(path + "/app.cfg")
-    data[index] = {
-      appname : cfg.app.name,
-      versionname: cfg.app.versionName,
-      appicon : path .. "/" .. cfg.app.icon,
-      appversion : "Version: " .. cfg.app.versionName,
-      package : "Package name: " .. cfg.app.package,
-      filemenu: fileMenuBuilder(index)
-    }
+function updateAppData(project, index)
+  result = pcall(config_validate.getConfig, project)
 
-    index += 1
+  if not result[0] then
+    return
   end
+
+  cfg = result[1]
   
-  return data
+  appinfo = {
+    appname : cfg.appname,
+    versionname: cfg.versionName,
+    project: project,
+    appicon: cfg.appicon,
+    appversion : "Version: " .. cfg.versionName,
+    package : "Package name: " .. cfg.pkgname,
+    filemenu: fileMenuBuilder(appinfo)
+  }
+  
+  if index is Number then
+    appData.insert(index, appinfo)
+  else
+    appData.append(appinfo)
+  end
+end
+
+function getAppData(projects)
+  for _path in projects do
+    updateAppData(_path)
+  end
 end
 
 function refreshAppList()
-  projects = file_utils.getProjects(projectdir)
-  appData = getAppData(projects)
-  app_adapter = SaynaaAdapter(activity, load(saynaadir .. "/main_applist.ly"), appData)
-  app_list.setAdapter(app_adapter)
+  
 end
 
 import Zip, package, path, math, time
@@ -194,7 +209,7 @@ function importProject(project_path)
   zp = Zip.ZipFile(project_path, "r")
   tmp_file = activity.getCacheDir().getAbsolutePath() .. "/tmp.cfg"
   zp.extract_file("app.cfg", tmp_file)
-  cfg = package.loadfile(tmp_file)
+  cfg = loadfile(tmp_file, 2)
   
   project_name = cfg.app.name
   pkg = cfg.app.package
@@ -202,7 +217,7 @@ function importProject(project_path)
 
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/importproject.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(loadfile("utils/layout/importproject.ly")))
 
   ok = objects.ok
   cancel = objects.cancel
@@ -215,10 +230,15 @@ function importProject(project_path)
       if path.exists(project)
         project = project .. "_" .. math.rand()
       end
-    
+
+      if path.exists(project) then
+        project = project .. "_" .. math.rand()
+      end
+
       FileUtil.makeDir(project)
       Zip.ZipFile(project_path, "r").extractall(project)
-      refreshAppList()
+      updateAppData(project, 0)
+      app_adapter.notifyDataSetChanged()
       toast("Project Imported")
       
       dialog.dismiss();
@@ -232,13 +252,23 @@ function importProject(project_path)
   })
 end
 
-function deleteProject(index)
-  project_path = projects[index]
-  project_name = appData[index].appname
+function getProjectIndex(project)
+  index = 0
+  for i in appData do
+    if i.project == project then
+      return index
+    end
+    index += 1
+  end
+end
+
+function deleteProject(appinfo)
+  project_path = appinfo.project
+  project_name = appinfo.appname
 
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/deleteproject.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(loadfile(saynaadir .. "/utils/layout/deleteproject.ly")))
 
   delete = objects.delete 
   cancel = objects.cancel
@@ -247,8 +277,9 @@ function deleteProject(index)
 
   delete.setOnClickListener({
     onClick: function(v)
-      if os.system("rm -r '$project_path'") == 0 then
-        refreshAppList()
+      if FileUtil.deleteFile(project_path) then
+        appData.pop(getProjectIndex(appinfo.project))
+        app_adapter.notifyDataSetChanged()
         toast("Project Deleted")
       end
       
@@ -266,7 +297,7 @@ end
 function newProject()
   ll = LoadLayout(activity)
   objects = ll.getObjects()
-  dialog = dialog_utils.createDialog(activity, ll.createView(load(saynaadir .. "/utils/layout/createproject.ly")))
+  dialog = dialog_utils.createDialog(activity, ll.createView(loadfile(saynaadir .. "/utils/layout/createproject.ly")))
 
   create = objects.create
   cancel = objects.cancel
@@ -294,8 +325,10 @@ function newProject()
         return;
       end
 
-      if(file_utils.buildProject(projectdir, name, pkg))
-        refreshAppList()
+      project = file_utils.newProject(saynaadir .. "/res/template.zip", projectdir, name, pkg)
+      if(project != null)
+        updateAppData(project, 0)
+        app_adapter.notifyDataSetChanged()
         toast("Project Created")
         b = Bundle()
         b.putString('project', projectdir .. "/" .. name)
@@ -349,7 +382,7 @@ function onCreate(bundle)
     end
   end
 
-  drawer_adapter = SaynaaAdapter(activity, load(saynaadir .. "/main_items.ly"), drawerData)
+  drawer_adapter = SaynaaAdapter(activity, loadfile(saynaadir .. "/main_items.ly"), drawerData)
   drawer_list.setAdapter(drawer_adapter)
   drawer_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
@@ -359,12 +392,14 @@ function onCreate(bundle)
       end
     end
   }))
-  
-  refreshAppList();
+
+  getAppData(file_utils.getProjects(projectdir))
+  app_adapter = SaynaaAdapter(activity, loadfile(saynaadir .. "/main_applist.ly"), appData)
+  app_list.setAdapter(app_adapter)
   app_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
       b = Bundle()
-      b.putString('project', projects[position])
+      b.putString('project', appData[position].project)
       b.putString('name', appData[position].appname)
       activity.newActivity("editor", b)
     end
@@ -372,17 +407,17 @@ function onCreate(bundle)
   
   app_list.setOnItemLongClickListener(({
     onItemLongClick: function(parent, view, position, id)
-      //deleteProject(position)
       b = Bundle()
-      b.putString('project', projects[position])
+      b.putString('project', appData[position].project)
       activity.newActivity("properties", b)
+      //appData.pop(position)
       return true
     end
   }))
   
   refresh.setOnClickListener({
     onClick: function(v)
-      refreshAppList()
+      app_adapter.notifyDataSetChanged()
     end
   })
   
@@ -424,4 +459,5 @@ function onCreate(bundle)
      mDrawer.openDrawer(3)
     end
   })
+  
 end

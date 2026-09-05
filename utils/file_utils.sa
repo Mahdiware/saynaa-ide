@@ -1,6 +1,6 @@
-import java, Zip, path, os, io, compile, package
+import java, Zip, path, io, compile, math
 
-FileUtil = java.bindClass("com.android.saynaa.utils.FileUtil")
+FileUtil = java.bindClass("com.saynaa.utils.FileUtil")
 
 function listPath(dir)
   list = []
@@ -11,7 +11,7 @@ function listPath(dir)
 end
 
 // treeFolder("/path/assets")
-function treeFolder(_path)
+function treeFolder(_path, skipPath)
   _name = _path.split("/")[-1]
   ret = {
     name: _name,
@@ -23,6 +23,9 @@ function treeFolder(_path)
     tree = []
     list = listPath(_path)
     for i in list do
+      if skipPath is List and i.path in skipPath then
+        continue
+      end
       if i.type == "directory" then
         tree.append(treeFolder(i.path))
       else
@@ -62,25 +65,58 @@ function addZipHelper(zip, location, map)
       end
     end
   else
-    zip.write(map.path, location + map.name)
+    zip.write(map.path, location + map.name, 9)
   end
 end
 
 // ziplocation: can null
-function addZipFolder(zippath, ziplocation, foldertozip)
+function addZipFolder(zippath, ziplocation, foldertozip, skipPath)
   if ziplocation == null or ziplocation == "/" then
     ziplocation = ""
   end
 
   z = Zip.ZipFile(zippath, "a")
-  map = treeFolder(foldertozip)
+  map = treeFolder(foldertozip, skipPath)
   addZipHelper(z, ziplocation, map)
   z.close()
 end
 
+function formatter(data, pos)
+  if not (data is List or data is Map) then
+    if data is String then
+      return '"' .. data .. '"'
+    end
+    return data
+  end
+  
+  isList = data is List
+  content = isList ? '[' : '{'
+  content += "\n"
+  pos = pos is Number ? pos : 1
+
+  for i in data do
+    content += "  " * pos
+    if isList then
+      value = formatter(i, pos+1)
+      content += "$value,\n"
+    else
+      value = formatter(data.get(i), pos+1)
+      content += "$i: $value,\n"
+    end
+  end
+  
+  content += "  " * (pos-1)
+  content += isList ? ']' : '}'
+  return content
+end
+
 function getProjects(dir)
   projects = []
-  for i in FileUtil.listDirByRecent(dir) do
+  jlist = FileUtil.listDirByRecent(dir)
+  length = java.length(jlist)
+  
+  for i in 0..(length) do
+    i = jlist.get(i)
     if i.isDirectory() then
       fullpath = i.getAbsolutePath()
       for j in path.listdir(fullpath) do
@@ -91,6 +127,39 @@ function getProjects(dir)
     end
   end
   return projects
+end
+
+abis = [
+  "armeabi-v7a",
+  "arm64-v8a",
+  "x86",
+  "x86_64"
+]
+
+function collect_libs(libsDir)
+  ret = []
+
+  if not path.isdir(libsDir) then
+    return ret
+  end
+  
+  for i in abis do
+    abiPath = libsDir + "/" + i
+    if not (path.exists(abiPath) and path.isdir(abiPath)) then
+      continue
+    end
+    for j in path.listdir(abiPath) do
+      if j.type != "file" then
+        continue
+      end
+      if j.name.startswith("lib") and j.name.endswith(".so") then
+        // ["armeabi-v7a/libsaynaa.so"]
+        ret.append(i .. "/" .. j.name)
+      end
+    end
+  end
+  
+  return ret
 end
 
 function extractFile(zipFile, FileToExtract, PathToSave)
@@ -112,14 +181,18 @@ function writeFile(file, content)
   r.close()
 end
 
-function buildProject(root, name, pkg)
+function newProject(temple, root, name, pkg)
   project = root + "/" + name
   if path.exists(project) then
-    return false
+    project = project .. "_" .. math.rand()
+  end
+  
+  if path.exists(project) then
+    return null
   end
 
   FileUtil.makeDir(project)
-  Zip.ZipFile("res/template.zip", "r").extractall(project)
+  Zip.ZipFile(temple, "r").extractall(project)
   appcfg = project + "/app.cfg"
   
   content = readFile(appcfg)
@@ -127,7 +200,7 @@ function buildProject(root, name, pkg)
   content = content.replace("</>PackageName</>", pkg)
   writeFile(appcfg, content)
 
-  return true
+  return project
 end
 
 function copyToClipboard(context, text)

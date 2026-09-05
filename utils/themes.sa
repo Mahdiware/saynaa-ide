@@ -1,6 +1,6 @@
 import java
 
-mystyle = java.bindClass('com.android.saynaa.R$style')
+mystyle = java.bindClass('com.saynaa.R$style')
 R_style = java.bindClass('android.R$style')
 R_attr = java.bindClass('android.R$attr')
 TypedValue = java.bindClass('android.util.TypedValue')
