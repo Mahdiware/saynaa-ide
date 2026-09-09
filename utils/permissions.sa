@@ -12,7 +12,10 @@ function requestStoragePermission(context)
     intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
     intent.setData(Uri.parse("package:" + context.getPackageName()))
     context.startActivity(intent)
+    return false
   end
+
+  return true
 end
 
 function canInstallApk(context)

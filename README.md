@@ -34,7 +34,7 @@ SaynaaIDE is a lightweight Android IDE for developing applications with the **Sa
 
 ## Example
 
-```saynaa
+```sa
 import "android.widget.*"
 import "android.view.*"
 import "android.text.*"
@@ -77,11 +77,11 @@ end
 - [x] Project management
 - [x] Android UI support
 - [x] APK builder
+- [x] Code auto-completion
 - [ ] Debugger
 - [ ] Error diagnostics in Code Editor
 - [ ] Git integration
 - [ ] Plugin system
-- [ ] Code auto-completion
 - [ ] Visual layout editor
 
 ## Contributing

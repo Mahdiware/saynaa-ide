@@ -16,7 +16,7 @@ import "com.saynaa.view.*"
 
 import utils.file_utils, utils.dialog_utils, utils.apkbuilder
 import utils.validator, utils.permissions, utils.ui_utils
-import utils.config_validate, package, os
+import utils.config_validate, os, Zip, package, path, math, time
 
 activity.getActionBar().hide();
 
@@ -25,10 +25,6 @@ resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen",
 
 if resourceId > 0 then
   result = activity.getResources().getDimensionPixelSize(resourceId);
-end
-
-function toast(msg)
-	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
 end
 
 drawerData = [
@@ -96,7 +92,11 @@ sharedir = externaldir .. "/.share"
 appData = []
 app_adapter = null
 
-permissions.requestStoragePermission(activity)
+if permissions.requestStoragePermission(activity) then
+  if not path.exists(projectdir) then
+    FileUtil.makeDir(projectdir)
+  end
+end
 
 function ShareProject(context, appinfo)
   Runnable = java.bindClass("java.lang.Runnable")
@@ -203,8 +203,6 @@ function refreshAppList()
   
 end
 
-import Zip, package, path, math, time
-
 function importProject(project_path)
   zp = Zip.ZipFile(project_path, "r")
   tmp_file = activity.getCacheDir().getAbsolutePath() .. "/tmp.cfg"
@@ -239,7 +237,7 @@ function importProject(project_path)
       Zip.ZipFile(project_path, "r").extractall(project)
       updateAppData(project, 0)
       app_adapter.notifyDataSetChanged()
-      toast("Project Imported")
+      java.toast("Project Imported")
       
       dialog.dismiss();
     end
@@ -280,7 +278,7 @@ function deleteProject(appinfo)
       if FileUtil.deleteFile(project_path) then
         appData.pop(getProjectIndex(appinfo.project))
         app_adapter.notifyDataSetChanged()
-        toast("Project Deleted")
+        java.toast("Project Deleted")
       end
       
       dialog.dismiss();
@@ -329,13 +327,13 @@ function newProject()
       if(project != null)
         updateAppData(project, 0)
         app_adapter.notifyDataSetChanged()
-        toast("Project Created")
+        java.toast("Project Created")
         b = Bundle()
         b.putString('project', projectdir .. "/" .. name)
         b.putString('name', name)
         activity.newActivity("editor", b)
       else
-        toast("Project Creation failed!")
+        java.toast("Project Creation failed!")
       end
     
       dialog.dismiss();
@@ -360,7 +358,7 @@ function onBackPressed()
     activity.finish()
   else
     lastBackPressTime = currentTime
-    toast("Press back again to exit")
+    java.toast("Press back again to exit")
     return true
   end
 end

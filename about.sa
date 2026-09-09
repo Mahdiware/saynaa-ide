@@ -8,17 +8,13 @@ import "android.net.Uri"
 
 import utils.ui_utils
 
-function toast(msg)
-  Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
-end
-
 function onCreate()
   root = loadlayout(activity, loadfile(saynaadir .. "/about_layout.ly"))
   activity.setContentView(root)
 
   Github.setOnClickListener(({
     onClick: function(v)
-      toast("Opening GitHub")
+      java.toast("Opening GitHub")
       intent = Intent(Intent.ACTION_VIEW)
       intent.setData(Uri.parse("https://github.com/mahdiware/saynaa-idr"))
       activity.startActivity(intent)
@@ -27,7 +23,7 @@ function onCreate()
 
   Share.setOnClickListener(({
     onClick: function(v)
-      toast("Share SaynaaIDE")
+      java.toast("Share SaynaaIDE")
 
       intent = Intent(Intent.ACTION_SEND)
       intent.setType("text/plain")
