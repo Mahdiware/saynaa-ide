@@ -302,6 +302,9 @@ function newProject()
   appName = objects.appName
   packageName = objects.packageName
   packageName.setText("com.example.myapp" .. math.rand())
+  
+  appNameError = false
+  packageNameError = false
 
   create.setOnClickListener({
     onClick: function(v)
@@ -309,18 +312,29 @@ function newProject()
       pkg = packageName.getText().strip();
 
       if (name == "") then
+        appNameError = true
         appName.setError("Enter app name");
         return;
       end
 
+      if appNameError then
+        appName.clearError()
+      end
+
       if (pkg == "") then
+        packageNameError = true
         packageName.setError("Enter package name");
         return;
       end
       
       if validator.is_invalid_package(pkg) then
+        packageNameError = true
         packageName.setError("Enter valid package name");
         return;
+      end
+      
+      if packageNameError then
+        packageName.clearError()
       end
 
       project = file_utils.newProject(saynaadir .. "/res/template.zip", projectdir, name, pkg)
@@ -329,7 +343,7 @@ function newProject()
         app_adapter.notifyDataSetChanged()
         java.toast("Project Created")
         b = Bundle()
-        b.putString('project', projectdir .. "/" .. name)
+        b.putString('project', project)
         b.putString('name', name)
         activity.newActivity("editor", b)
       else
@@ -354,9 +368,7 @@ function onBackPressed()
   diff = currentTime - lastBackPressTime
 
   // 2,000,000,000 ns = 2 seconds
-  if diff < 2000000000
-    activity.finish()
-  else
+  if diff > 2000000000
     lastBackPressTime = currentTime
     java.toast("Press back again to exit")
     return true
@@ -408,7 +420,6 @@ function onCreate(bundle)
       b = Bundle()
       b.putString('project', appData[position].project)
       activity.newActivity("properties", b)
-      //appData.pop(position)
       return true
     end
   }))

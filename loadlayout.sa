@@ -25,6 +25,7 @@ DisplayMetrics = java.bindClass('android.util.DisplayMetrics')
 BitmapFactory = java.bindClass('android.graphics.BitmapFactory')
 BitmapDrawable = java.bindClass('android.graphics.drawable.BitmapDrawable')
 CompoundButton = java.bindClass('android.widget.CompoundButton')
+ArrayPageAdapter = java.bindClass('com.saynaa.adapter.ArrayPageAdapter')
 
 RelativeLayoutRule = {
   layout_above: 2,
@@ -262,6 +263,7 @@ class LoadLayout
     this.default_nodes = {}
     this.ids = {}
     this.idmap = {}
+    this.bind_keys = []
   end
   
   function setModule(module)
@@ -505,7 +507,12 @@ class LoadLayout
     paramsClass = java.bindClass(str(classname) + '$LayoutParams')
   
     if paramsClass != null then
-      return paramsClass(width, height)
+      reslt = pcall(function(w, h)
+        return paramsClass(w, h)
+      end, width, height)
+      if reslt[0] then
+        return reslt[1]
+      end
     end
   
     return ViewGroup.LayoutParams(width, height)
@@ -657,6 +664,28 @@ class LoadLayout
       right = this.parse_size(padding_end or padding or 0)
       bottom = this.parse_size(padding_bottom or padding or 0)
       view.setPaddingRelative(left, top, right, bottom)
+    end
+    
+    pages = node.get('pages')
+    if pages != null and pages is List then
+      adapter=ArrayPageAdapter()
+      for i in pages do
+        if i is String then
+          vw = loadlayout(this.context, loadfile("$i.ly"))
+          if java.instanceof(vw, View) then
+            adapter.add(vw)
+          end
+        elif i is Map then
+          vw = loadlayout(this.context, i)
+          if java.instanceof(vw, View) then
+            adapter.add(vw)
+          end
+        elif java.instanceof(i, View) then
+          adapter.add(i)
+        end
+      end
+      
+      view.setAdapter(adapter)
     end
   
     text = node.get('text')
@@ -976,7 +1005,15 @@ class LoadLayout
     end
     
     keys = data.keys
-    for key in keys do
+    
+    for i in keys do
+      if i in this.bind_keys then
+        continue
+      end
+      this.bind_keys.append(i)
+    end
+    
+    for key in this.bind_keys do
       view = this.ids.get(key)
       // ADD THIS: Wipe old data and reset to original layout state first!
       this.reset_views_to_defaults(key, view)
@@ -989,7 +1026,7 @@ class LoadLayout
 end
 
 
-function loadlayout(activity, node, data)
+function loadlayout(activity, node)
   if not (node is Map) then
     assert(false, 'loadlayout node: expected Map and got ' .. type(node))
   end

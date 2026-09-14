@@ -5,11 +5,20 @@ import os, path, permissions, package
 File = java.bindClass('java.io.File')
 FileUtil = java.bindClass("com.saynaa.utils.FileUtil")
 
+function isReduceSizeEnabled(context)
+    default = true
+    data = context.getSharedData("reduce_apk_size")
+    if data is Bool then
+      return data
+    end
+    return default
+end
+
 function BuildApk(context, project)
   Runnable = java.bindClass("java.lang.Runnable")
   Thread = java.bindClass("java.lang.Thread")
   
-  externaldir = "/storage/emulated/0/.SaynaaIDE" #activity.getSaynaaExtDir()
+  externaldir = "/storage/emulated/0/.SaynaaIDE"
   
   dlg = dialog_utils.createProgressDialog(context);
   dlg.setTitle("Compiling");
@@ -169,12 +178,17 @@ function build(context, dlg, project, externaldir)
   
   dlg.setMessage("Android resources linked successfully.")
   
-  
   dlg.setMessage("Adding application files...")
   libs = file_utils.collect_libs(jniLibs)
   file_utils.writeFile(externaldir .. "/note.txt", str(libs))
   for i in libs do
     FileUtil.copyFile(jniLibs .. "/" .. i, frame .. "/lib/" .. i)
+  end
+  
+  if isReduceSizeEnabled(context) then
+    if path.isdir(jniLibs) then
+      FileUtil.deleteFile(jniLibs)
+    end
   end
   
   skipPath = [res, manifest]

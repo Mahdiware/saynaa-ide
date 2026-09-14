@@ -15,8 +15,9 @@ function onCreate()
   Github.setOnClickListener(({
     onClick: function(v)
       java.toast("Opening GitHub")
+
       intent = Intent(Intent.ACTION_VIEW)
-      intent.setData(Uri.parse("https://github.com/mahdiware/saynaa-idr"))
+      intent.setData(Uri.parse("https://github.com/mahdiware/saynaa-ide"))
       activity.startActivity(intent)
     end
   }))
@@ -28,7 +29,7 @@ function onCreate()
       intent = Intent(Intent.ACTION_SEND)
       intent.setType("text/plain")
       intent.putExtra(Intent.EXTRA_SUBJECT, "SaynaaIDE")
-      intent.putExtra(Intent.EXTRA_TEXT, "Check out SaynaaIDE on GitHub:\nhttps://github.com/mahdiware")
+      intent.putExtra(Intent.EXTRA_TEXT, "Check out SaynaaIDE on GitHub:\nhttps://github.com/mahdiware/saynaa-ide")
       activity.startActivity(Intent.createChooser(intent, "Share via"))
     end
   }))

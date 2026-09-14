@@ -15,10 +15,21 @@ SaynaaIDE is a lightweight Android IDE for developing applications with the **Sa
 - 🌙 Modern Material Design interface
 
 ## Screenshots
+
 ![Screenshot1](demo/screenshot1.jpg)
 ![Screenshot2](demo/screenshot2.jpg)
 ![Screenshot3](demo/screenshot3.jpg)
 
+<details>
+<summary>See more...</summary>
+
+![Screenshot4](demo/screenshot4.jpg)
+![Screenshot5](demo/screenshot5.jpg)
+![Screenshot6](demo/screenshot6.jpg)
+![Screenshot7](demo/screenshot7.jpg)
+![Screenshot8](demo/screenshot8.jpg)
+
+</details>
 
 ## Requirements
 

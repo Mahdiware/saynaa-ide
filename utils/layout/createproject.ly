@@ -20,17 +20,17 @@ return {
   },
 
   {
-    EditText,
+    FloatingEditText,
     id: "appName",
     layout_width: "match_parent",
     layout_height: "wrap_content",
     hint: "App name",
-    textSize: "16sp",
+    textSize: "14sp",
     singleLine: true,
   },
 
   {
-    EditText,
+    FloatingEditText,
     id: "packageName",
     layout_width: "match_parent",
     layout_height: "wrap_content",

@@ -169,6 +169,11 @@ function extractFile(zipFile, FileToExtract, PathToSave)
 end
 
 function readFile(file)
+  if not (path.exists(file) and path.isfile(file)) then
+    error("$file not exists or is not file")
+    return null
+  end
+
   r = io.open(file, "r")
   content = r.read()
   r.close()
@@ -179,6 +184,21 @@ function writeFile(file, content)
   r = io.open(file, "w")
   r.write(content)
   r.close()
+end
+
+function readWrite(file, content)
+  if not (content is Map) then
+    return false
+  end
+
+  buffer = readFile(file)
+
+  for i in content.keys do
+    buffer = buffer.replace(i, content.get(i))
+  end
+
+  writeFile(file, buffer)
+  return true
 end
 
 function newProject(temple, root, name, pkg)
@@ -193,12 +213,12 @@ function newProject(temple, root, name, pkg)
 
   FileUtil.makeDir(project)
   Zip.ZipFile(temple, "r").extractall(project)
-  appcfg = project + "/app.cfg"
   
-  content = readFile(appcfg)
-  content = content.replace("</>AppName</>", name)
-  content = content.replace("</>PackageName</>", pkg)
-  writeFile(appcfg, content)
+  appcfg = project + "/app.cfg"
+  readWrite(appcfg, {"</>AppName</>": name, "</>PackageName</>": pkg})
+  
+  main = project + "/main.sa"
+  readWrite(main, {"</>AppName</>": name, "</>PackageName</>": pkg})
 
   return project
 end

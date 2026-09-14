@@ -12,7 +12,6 @@ import "java.nio.file.*"
 import "android.provider.MediaStore"
 import "android.graphics.Bitmap"
 
-
 import utils.ui_utils, utils.permissions
 import utils.config_validate,  utils.file_utils
 
@@ -152,7 +151,7 @@ function onCreate(bundle)
   image.setOnClickListener({
     onClick: function(v)
       intent = Intent(Intent.ACTION_PICK)
-      intent.setDataAndType(Uri.parse("content://media/external/images/media"),"image/*")
+      intent.setType("image/*")
 
       pm = activity.getPackageManager()
       if intent.resolveActivity(pm) != null then

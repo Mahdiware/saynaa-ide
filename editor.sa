@@ -14,6 +14,7 @@ import "android.view.inputmethod.InputMethodManager"
 import "io.github.rosemoe.sora.widget.schemes.SchemeDarcula"
 import "io.github.rosemoe.sora.widget.EditorSearcher"
 import "com.saynaa.utils.FileUtil"
+
 import utils.file_utils, utils.ui_utils, utils.dialog_utils, utils.apkbuilder
 
 activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -21,7 +22,7 @@ activity.getActionBar().hide()
 
 # global variables
 savedText = null
-openfile = null 
+openfile = []
 project = null
 parentDirectory = []
 rootpath = null
@@ -30,6 +31,12 @@ AdapterData = []
 result = 0
 resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
 
+tab_gone = {visibility: "gone"}
+tab_visible = {visibility: "visible"}
+selected = 0
+OLData = []
+editor = null
+
 ReplaceEnabled = false
 findAndReplaceOpen = false
 findAndReplaceCase = false
@@ -37,7 +44,6 @@ findAndReplaceRegex = false
 
 // visibility
 visible = 0
-invisible = 4
 gone = 8
 
 if resourceId > 0 then
@@ -232,8 +238,8 @@ assert(activity != null, 'activity is null')
 Layout = {
   DrawerLayout,
   id: "mDrawer",
-  loadfile(saynaadir .. "/editor_layout.ly"),
-  loadfile(saynaadir .. "/editor_drawer.ly")
+  loadfile("editor_layout.ly"),
+  loadfile("editor_drawer.ly")
 }
 
 root = loadlayout(activity, Layout)
@@ -244,15 +250,14 @@ symbols = loadfile(saynaadir .. "/editor_symbols.ly")
 searcher = null
 nonPrintablePaintingFlags = CodeEditor.FLAG_DRAW_WHITESPACE_LEADING | CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
 
-
 function onKeyDown(c,e)
   if c==4 then
     if mDrawer.isDrawerOpen(3) then
       mDrawer.closeDrawer(3)
       return true
     end
-    if openfile != null
-      file_utils.writeFile(openfile, editor.getText())
+    if openfile.find(selected) != -1 then
+      file_utils.writeFile(openfile[selected], editor.getText())
     end
     
     if findAndReplaceOpen then
@@ -270,6 +275,36 @@ function isModified(text)
   return savedText == text
 end
 
+function jumpToLine(editor, lineNumber)
+  if editor == null then
+    return
+  end
+
+  if lineNumber < 1 then
+    lineNumber = 1
+  end
+
+  // Sora uses zero-based line indexes
+  line = lineNumber - 1
+
+  text = editor.getText()
+  lineCount = text.length
+
+  if lineCount <= 0 then
+    return
+  end
+
+  if line >= lineCount then
+    line = lineCount - 1
+  end
+
+  column = 0
+
+  editor.setSelection(line, column)
+  editor.ensureCursorVisible()
+  editor.ensureSelectionVisible()
+end
+
 function closeFindAndReplace()
   findAndReplaceOpen = false     
   findreplace.setVisibility(gone)
@@ -278,6 +313,15 @@ function closeFindAndReplace()
   btnall.setEnabled(false);
   replace.setText("")
   find.setText("")
+end
+
+function newCodeEditor(data)
+  code = CodeEditor(activity)
+  code.setTextSize(16)
+  code.setDark(theme.isDarkMode())
+  code.setLayoutParams(LinearLayout.LayoutParams(-1, -1))
+  code.setText(data)
+  return code
 end
 
 function onCreate(bundle)
@@ -290,10 +334,125 @@ function onCreate(bundle)
   name = bundle.getString("name")
   title.setText(name)
 
-  openfile = project .. "/main.sa"
-  filename.setText("main.sa")
-  editor.setText(file_utils.readFile(openfile))
+  OLAdapter = SaynaaAdapter(activity, loadfile("editor_items.ly"), OLData)
+  openList.setAdapter(OLAdapter)
+  openList.setOnItemClickListener(AdapterView.OnItemClickListener({
+    onItemClick: function(parent, view, position, id)
+      if position == selected then
+        return
+      end
+
+      OLData[selected].scrollbar = tab_gone
+      OLData[position].scrollbar = tab_visible
+      OLAdapter.notifyDataSetChanged()
+      selected = position
+
+      editor = OLData[position].codeEditor
+      searcher = OLData[position].editorSearcher
+      pagev.showPage(selected)
+    end
+  }))
+  
+  
+  
+  // pop.setOnMenuItemClickListener(callback)
+  // pop.show();
+  pageAdapter = ArrayPageAdapter()
+  
+  openList.setOnItemLongClickListener(({
+    onItemLongClick: function(parent, view, position, id)
+      pop=PopupMenu(activity, view)
+      menu=pop.getMenu()
+      
+      if position == 0 then
+        menu.add(0, 0, 0, "Close Other")
+      else
+        menu.add(0, 1, 0, "Close")
+      end
+      
+      pop.setOnMenuItemClickListener({
+        onMenuItemClick: function(item)
+          id = item.getItemId()
+          if id == 0 then
+            // i will close others and skip 0
+            count = openfile.length
+            for i in 1..(count) do
+              OLData.pop(i)
+              openfile.pop(i)
+              pageAdapter.remove(i)
+            end
+            
+            pageAdapter.notifyDataSetChanged()
+            OLAdapter.notifyDataSetChanged()
+          elif id == 1 then
+            oldSelected = selected
+            
+            pageAdapter.remove(position)
+            OLData.pop(position)
+            openfile.pop(position)
+            
+            if position < oldSelected then
+              selected = oldSelected - 1
+            
+            elif position == oldSelected then
+              selected = oldSelected
+            
+              if selected >= OLData.length then
+                selected = OLData.length - 1
+              end
+            end
+            
+            if selected < 0 then
+              selected = 0
+            end
+            
+            for i in 0..(OLData.length - 1) do
+              OLData[i].scrollbar = tab_gone
+            end
+            
+            OLData[selected].scrollbar = tab_visible
+            
+            editor = OLData[selected].codeEditor
+            searcher = OLData[selected].editorSearcher
+            
+            OLAdapter.notifyDataSetChanged()
+            pageAdapter.notifyDataSetChanged()
+            pagev.showPage(selected)
+          end
+          return true
+        end
+      })
+      pop.show();
+      return true
+    end
+  }))
+
+  openfile.append(project .. "/main.sa")
+  buffer = file_utils.readFile(openfile[-1])
+  
+  editor = newCodeEditor(buffer)
   searcher = editor.getSearcher()
+  OLData.append({ 
+    text: 'main.sa',
+    scrollbar: tab_visible,
+    codeEditor: editor,
+    editorSearcher: searcher
+  })
+  
+  pageAdapter.add(editor)
+  pagev.setAdapter(pageAdapter)
+  
+  pagev.addOnPageChangeListener({
+    onPageSelected: function(position)
+      OLData[selected].scrollbar = tab_gone
+      OLData[position].scrollbar = tab_visible
+      OLAdapter.notifyDataSetChanged()
+      selected = position
+
+      editor = OLData[position].codeEditor
+      searcher = OLData[position].editorSearcher
+    end
+  })
 
   buttonBarStyle = activity.getResources().getIdentifier("android:attr/buttonBarButtonStyle", null, null)
   
@@ -332,7 +491,7 @@ function onCreate(bundle)
 
   run.setOnClickListener({
     onClick: function(v)
-      file_utils.writeFile(openfile, editor.getText())
+      file_utils.writeFile(openfile[selected], editor.getText())
       activity.newActivity(project .. "/main")
     end
   })
@@ -351,7 +510,8 @@ function onCreate(bundle)
   menu.add(0, 2, 0, "Word wrap").setCheckable(true)
   menu.add(0, 3, 0, "Read-only mode").setCheckable(true)
   menu.add(0, 4, 0, "Show blank symbol").setCheckable(true)
-  menu.add(0, 5, 0, "About")
+  menu.add(0, 5, 0, "Properties")
+  menu.add(0, 6, 0, "About")
   
   pop.setOnMenuItemClickListener({
     onMenuItemClick: function(item)
@@ -379,6 +539,10 @@ function onCreate(bundle)
             editor.setNonPrintablePaintingFlags(0);
           end
         elif id == 5 then
+          b = Bundle()
+          b.putString('project', project)
+          activity.newActivity("properties", b)
+        elif id == 6 then
           activity.newActivity("about")
         end
         return true
@@ -490,7 +654,7 @@ function onCreate(bundle)
   
   save.setOnClickListener({
     onClick: function(v)
-     file_utils.writeFile(openfile, editor.getText())
+     file_utils.writeFile(openfile[selected], editor.getText())
      java.toast("Save successful")
     end
   })
@@ -509,11 +673,44 @@ function onCreate(bundle)
       
       if data.type == "file" then
         name = data.title
-        if name.endswith(".sa") or name.endswith(".cfg") or name.endswith(".ly") then
-          file_utils.writeFile(openfile, editor.getText())
-          openfile = data.path
-          filename.setText(name)
-          editor.setText(file_utils.readFile(openfile))
+        
+        extension = ['sa', 'ly', 'cfg', 'txt', 'json', 'md', 'html', 'css', 'js']
+        if name.split(".")[-1] in extension then
+          file_pos = openfile.find(data.path)
+          if file_pos != -1 then
+            OLData[selected].scrollbar = tab_gone
+            OLData[file_pos].scrollbar = tab_visible
+            OLAdapter.notifyDataSetChanged()
+            selected = file_pos
+
+            editor = OLData[file_pos].codeEditor
+            searcher = OLData[file_pos].editorSearcher
+            pagev.showPage(selected)
+            mDrawer.closeDrawer(3)
+            return
+          end
+        
+          file_utils.writeFile(openfile[selected], editor.getText())
+          openfile.append(data.path)
+          
+          buffer = file_utils.readFile(openfile[-1])
+          editor = newCodeEditor(buffer)
+          searcher = editor.getSearcher()
+          
+          OLData.append({ 
+            text: name,
+            scrollbar: tab_visible,
+            codeEditor: editor,
+            editorSearcher: searcher
+          })
+          OLData[selected].scrollbar = tab_gone
+          OLAdapter.notifyDataSetChanged()
+          selected += 1
+          
+          pageAdapter.add(editor)
+          pagev.notifyDataSetChanged()
+          pagev.showPage(selected)
+
           mDrawer.closeDrawer(3)
         end
       else

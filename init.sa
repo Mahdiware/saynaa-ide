@@ -15,7 +15,7 @@ import utils.themes
 
 theme = themes.ThemeManager(activity)
 theme.applyTheme()
-activity.setDebugMode(true)
+// java.setDebugMode(false)
 
 package.searchers.append(function (name)
    # Support wildcard import: "java.util.*"

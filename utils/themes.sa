@@ -17,7 +17,7 @@ lightmode = {
   text: 0xFF172033,
   textSecondary: 0xFF5F6B7A,
 
-  divider: 0xFFD7E0EA,
+  divider: 0xFF2E7D32,
   disabled: 0xFF9AA6B2,
 
   success: 0xFF2E7D32,
@@ -36,7 +36,7 @@ darkmode = {
   text: 0xFFF5F7FA,
   textSecondary: 0xFFB0BAC7,
 
-  divider: 0xFF303A48,
+  divider: 0xFFB2DFDB,
   disabled: 0xFF687383,
 
   success: 0xFF66BB6A,
@@ -49,8 +49,8 @@ class ThemeManager
   function _init(context)
     this.context = context
 
-    this.styleLight = mystyle.LightTheme2
-    this.styleDark = mystyle.DarkTheme2
+    this.styleLight = mystyle.LightTheme1
+    this.styleDark = mystyle.DarkTheme10
     
     this.dialogLight = R_style.Theme_DeviceDefault_Light_Dialog_NoActionBar
     this.dialogDark = R_style.Theme_DeviceDefault_Dialog_NoActionBar

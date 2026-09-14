@@ -163,30 +163,22 @@ return {
       orientation: "vertical",
       {
         LinearLayout,
-        layout_height: "40dp",
+        layout_height: "wrap_content",
         layout_width: "match_parent",
         backgroundColor: theme.colorPrimary,
-        orientation: "horizontal",
         {
-          TextView,
-          id: "filename",
-          layout_height: "match_parent",
-          layout_width: "30%w",
-          //layout_weight: "1",
-          gravity: "center",
-          text: "Home",
-          textColor: "#FFFFFF",
-          layout_margin: "4dp"
+          HorizontalListView,
+          id: "openList",
         },
       },
+      
       {
-        CodeEditor,
-        id: "editor",
+        PageView,
+        id: "pagev",
         layout_width: "match_parent",
         layout_height: "match_parent",
-        textSize: "10sp",
-        dark: theme.isDarkMode()
-      }
+        offscreenPageLimit: 2,
+      },
     },
   },
   {
@@ -202,7 +194,7 @@ return {
       layout_height: "54dp",
       layout_gravity: "right",
       colorFilter: "#FFFFFFFF",
-      background: ui_utils.roundBg(0xFFF85149, 32),
+      background: ui_utils.roundBg(0xFF58A6FF, 32),
       layout_margin: "12dp"
     }, 
     
