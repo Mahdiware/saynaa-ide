@@ -6,19 +6,22 @@ import "android.graphics.*"
 import "com.saynaa.adapter.*"
 import "android.content.*"
 import "com.saynaa.view.*"
-import "com.saynaa.CodeEditor"
+import "io.github.rosemoe.sora.CodeEditor"
 import "android.graphics.*"
 import "android.graphics.drawable.*"
 import "android.app.ProgressDialog"
 import "android.view.inputmethod.InputMethodManager"
 import "io.github.rosemoe.sora.widget.schemes.SchemeDarcula"
 import "io.github.rosemoe.sora.widget.EditorSearcher"
+import "com.saynaa.utils.Preferences"
 import "com.saynaa.utils.FileUtil"
 
 import utils.file_utils, utils.ui_utils, utils.dialog_utils, utils.apkbuilder
 
 activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 activity.getActionBar().hide()
+
+preference = Preferences(activity)
 
 # global variables
 savedText = null
@@ -324,6 +327,20 @@ function newCodeEditor(data)
   return code
 end
 
+wordwrap = false
+readonly = false
+blanksymbol = false
+
+function editorProperties(_editor)
+  _editor.setWordwrap(wordwrap)
+  _editor.setEditable(not readonly);
+  if blanksymbol then
+    _editor.setNonPrintablePaintingFlags(nonPrintablePaintingFlags);
+  else
+    _editor.setNonPrintablePaintingFlags(0);
+  end
+end
+
 function onCreate(bundle)
   if bundle == null then
     java.toast("bundle is null")
@@ -348,21 +365,24 @@ function onCreate(bundle)
       selected = position
 
       editor = OLData[position].codeEditor
+      editorProperties(editor)
       searcher = OLData[position].editorSearcher
+      openList.setSelection(selected)
       pagev.showPage(selected)
     end
   }))
   
-  
-  
-  // pop.setOnMenuItemClickListener(callback)
-  // pop.show();
   pageAdapter = ArrayPageAdapter()
   
   openList.setOnItemLongClickListener(({
     onItemLongClick: function(parent, view, position, id)
       pop=PopupMenu(activity, view)
       menu=pop.getMenu()
+      
+      count = openfile.length
+      if count <= 1 then
+        return true
+      end
       
       if position == 0 then
         menu.add(0, 0, 0, "Close Other")
@@ -375,7 +395,6 @@ function onCreate(bundle)
           id = item.getItemId()
           if id == 0 then
             // i will close others and skip 0
-            count = openfile.length
             for i in 1..(count) do
               OLData.pop(i)
               openfile.pop(i)
@@ -413,10 +432,12 @@ function onCreate(bundle)
             OLData[selected].scrollbar = tab_visible
             
             editor = OLData[selected].codeEditor
+            editorProperties(editor)
             searcher = OLData[selected].editorSearcher
             
             OLAdapter.notifyDataSetChanged()
             pageAdapter.notifyDataSetChanged()
+            openList.setSelection(selected)
             pagev.showPage(selected)
           end
           return true
@@ -450,6 +471,7 @@ function onCreate(bundle)
       selected = position
 
       editor = OLData[position].codeEditor
+      editorProperties(editor)
       searcher = OLData[position].editorSearcher
     end
   })
@@ -667,6 +689,7 @@ function onCreate(bundle)
   adapter = SaynaaAdapter(activity, loadfile(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
   drawer_list.setAdapter(adapter)
 
+  isSingleTab = preference.getBoolean("single_tab", true)
   drawer_list.setOnItemClickListener(({
     onItemClick: function(parent, view, position, id)
       data = AdapterData[position]
@@ -676,6 +699,16 @@ function onCreate(bundle)
         
         extension = ['sa', 'ly', 'cfg', 'txt', 'json', 'md', 'html', 'css', 'js']
         if name.split(".")[-1] in extension then
+          if isSingleTab then
+            file_utils.writeFile(openfile[selected], editor.getText())
+            OLData[selected].text = name
+            openfile[selected] = data.path
+            buffer = file_utils.readFile(openfile[-1])
+            editor.setText(buffer)
+            OLAdapter.notifyDataSetChanged()
+            mDrawer.closeDrawer(3)
+            return
+          end
           file_pos = openfile.find(data.path)
           if file_pos != -1 then
             OLData[selected].scrollbar = tab_gone
@@ -684,8 +717,10 @@ function onCreate(bundle)
             selected = file_pos
 
             editor = OLData[file_pos].codeEditor
+            editorProperties(editor)
             searcher = OLData[file_pos].editorSearcher
             pagev.showPage(selected)
+            openList.setSelection(selected)
             mDrawer.closeDrawer(3)
             return
           end
@@ -695,6 +730,7 @@ function onCreate(bundle)
           
           buffer = file_utils.readFile(openfile[-1])
           editor = newCodeEditor(buffer)
+          editorProperties(editor)
           searcher = editor.getSearcher()
           
           OLData.append({ 
@@ -706,11 +742,11 @@ function onCreate(bundle)
           OLData[selected].scrollbar = tab_gone
           OLAdapter.notifyDataSetChanged()
           selected += 1
-          
+
           pageAdapter.add(editor)
           pagev.notifyDataSetChanged()
           pagev.showPage(selected)
-
+          openList.setSelection(selected)
           mDrawer.closeDrawer(3)
         end
       else

@@ -1,4 +1,6 @@
-import os, path, compile, file_utils
+import java, path, compile, file_utils
+
+Preferences = java.bindClass("com.saynaa.utils.Preferences")
 
 function compileCodeHelper(map)
   if map.type == "directory" then
@@ -38,14 +40,9 @@ end
 
 
 function setBytecodeEnabled(context, enabled)
-  context.setSharedData("bytecode_compilation", enabled)
+  Preferences(context).putBoolean("bytecode_compilation", enabled)
 end
 
 function isBytecodeEnabled(context)
-    default = true
-    data = context.getSharedData("bytecode_compilation")
-    if data is Bool then
-      return data
-    end
-    return default
+  return Preferences(context).getBoolean("bytecode_compilation", true)
 end

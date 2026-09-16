@@ -245,6 +245,37 @@ gravity = {
   'end': 8388613
 }
 
+auto_attrs_excluded = [
+  "id",
+  "style",
+
+  "orientation",
+  "pages",
+  "text",
+  "textSize",
+  "textStyle",
+  "textColor",
+  "textAppearance",
+  "hint",
+  "singleLine",
+  "checked",
+  "backgroundColor",
+  "background",
+  "colorFilter",
+  "src",
+  "scaleType",
+  "visibility",
+  "textAlignment",
+  "ellipsize",
+  "autoLink",
+  "inputType",
+  "imeOptions",
+  "password",
+  "onClick",
+  "onChecked",
+  "items"
+]
+
 class LoadLayout
   function _init(context)
     this.context = context
@@ -259,7 +290,6 @@ class LoadLayout
     this.saynaadir = java.saynaadir
     
     this.module = null
-    this.next_id = 0x7f000000
     this.default_nodes = {}
     this.ids = {}
     this.idmap = {}
@@ -858,20 +888,17 @@ class LoadLayout
       adapter = ArrayAdapter(this.context, AndroidRLayout.simple_list_item_1, items)
       view.setAdapter(adapter)
     end
-  
   end
-  
+
   function apply_auto_attrs(view, node)
     keys = node.keys
     if keys == null then
       return
     end
 
-    i = 0
-    while i < keys.length do
-      key = keys[i]
+    for key in keys do
       if key is String then
-        if key != 'id' and key != 'style' and !key.startswith('layout_') and !key.startswith('padding') and key != 'orientation' and key != 'text' and key != 'textSize' and key != 'textStyle' and key != 'textColor' and key != 'textAppearance' and key != 'hint' and key != 'singleLine' and key != 'checked' and key != 'backgroundColor' and key != 'background' and key != 'src' and key != 'scaleType' and key != 'visibility' and key != 'textAlignment' and key != 'ellipsize' and key != 'autoLink' and key != 'inputType' and key != 'imeOptions' and key != 'password' and key != 'onClick' and key != 'items' then
+        if not (key in auto_attrs_excluded) and !key.startswith('layout_') and !key.startswith('padding') then
           value = node.get(key)
           setter = 'set' + this.capitalize_first(key)
           called = pcall(function(v, s, val)
@@ -883,10 +910,9 @@ class LoadLayout
           end
         end
       end
-      i = i + 1
     end
   end
-  
+
   function createView(node, parent)
     if not (node is Map) then
       assert(false, 'loadlayout node: expected Map and got ' .. type(node) .. package.path)
@@ -919,10 +945,10 @@ class LoadLayout
   
     node_id = node.get('id')
     if node_id != null then
-      this.next_id = this.next_id + 1
-      view.setId(this.next_id)
+      gen_id = View.generateViewId()
+      view.setId(gen_id)
       this.ids.setattr(node_id, view)
-      this.idmap.setattr(node_id, this.next_id)
+      this.idmap.setattr(node_id, gen_id)
       
       this.default_nodes.setattr(node_id, node) // ADD THIS: Save the original layout blueprint
       

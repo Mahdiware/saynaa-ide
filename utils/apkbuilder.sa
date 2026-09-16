@@ -4,15 +4,7 @@ import os, path, permissions, package
 
 File = java.bindClass('java.io.File')
 FileUtil = java.bindClass("com.saynaa.utils.FileUtil")
-
-function isReduceSizeEnabled(context)
-    default = true
-    data = context.getSharedData("reduce_apk_size")
-    if data is Bool then
-      return data
-    end
-    return default
-end
+Preferences = java.bindClass("com.saynaa.utils.Preferences")
 
 function BuildApk(context, project)
   Runnable = java.bindClass("java.lang.Runnable")
@@ -184,8 +176,10 @@ function build(context, dlg, project, externaldir)
   for i in libs do
     FileUtil.copyFile(jniLibs .. "/" .. i, frame .. "/lib/" .. i)
   end
-  
-  if isReduceSizeEnabled(context) then
+
+  isReduceSize = Preferences(context).getBoolean("reduce_apk_size", true)
+
+  if isReduceSize then
     if path.isdir(jniLibs) then
       FileUtil.deleteFile(jniLibs)
     end

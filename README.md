@@ -51,7 +51,7 @@ import "android.view.*"
 import "android.text.*"
 
 function toast(msg)
-	Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+  Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
 end
 
 layout = {
@@ -108,7 +108,3 @@ This project is licensed under the MIT License.
 **Mohamed Abdifitaah Jama (Mahdiware)**
 
 - GitHub: https://github.com/mahdiware
-
----
-
-Made with ❤️ for Android developers.

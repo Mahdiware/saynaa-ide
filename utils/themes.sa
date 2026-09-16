@@ -6,6 +6,7 @@ R_attr = java.bindClass('android.R$attr')
 TypedValue = java.bindClass('android.util.TypedValue')
 Configuration = java.bindClass("android.content.res.Configuration")
 Color = java.bindClass("android.graphics.Color")
+Preferences = java.bindClass("com.saynaa.utils.Preferences")
 
 lightmode = {
   primary: 0xFF3F51B5,
@@ -54,6 +55,8 @@ class ThemeManager
     
     this.dialogLight = R_style.Theme_DeviceDefault_Light_Dialog_NoActionBar
     this.dialogDark = R_style.Theme_DeviceDefault_Dialog_NoActionBar
+    
+    this.preference = Preferences(this.context)
   end
   
   // it return missing class attribute
@@ -75,17 +78,11 @@ class ThemeManager
   end
   
   function setDarkMode(dark)
-    this.context.setSharedData("darkmode", dark)
+    this.preference.putBoolean("darkmode", dark)
   end
   
   function isDarkMode()
-    default = true
-    data = this.context.getSharedData("darkmode")
-    if data is Bool then
-      return data
-    end
-    
-    return default
+    return this.preference.getBoolean("darkmode", true)
   end
   
   function  getDialogTheme()

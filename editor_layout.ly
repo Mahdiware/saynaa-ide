@@ -177,7 +177,6 @@ return {
         id: "pagev",
         layout_width: "match_parent",
         layout_height: "match_parent",
-        offscreenPageLimit: 2,
       },
     },
   },

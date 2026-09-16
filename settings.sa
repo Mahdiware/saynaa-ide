@@ -1,6 +1,7 @@
 import "android.widget.*"
 import "android.view.*"
 import "com.saynaa.view.*"
+import "com.saynaa.utils.Preferences"
 
 import utils.ui_utils, utils.bytecode_utils
 AndroidRId = java.bindClass('android.R$id')
@@ -8,6 +9,8 @@ AndroidRId = java.bindClass('android.R$id')
 actionBar = activity.getActionBar()
 actionBar.setDisplayHomeAsUpEnabled(true);
 actionBar.setDisplayShowHomeEnabled(false);
+
+preference = Preferences(activity)
 
 function switchItem(itemid, icon, title, desc, checked)
   return {
@@ -167,6 +170,7 @@ layout={
         
         switchItem("darktheme", "icons/theme.png","Dark Theme","Use dark interface",false),
         switchItem("reduceapk", "icons/ic_android.png", "Reduce APK Size", "Optimize APK size", true),
+        switchItem("singletab", "icons/ic_sync.png", "Single Tab", "Use the stable single-editor tab", true),
         buttonItem("about", "icons/documentation.png", "About", "Version, licenses and credits"),
       },
 
@@ -222,18 +226,10 @@ function onOptionsItemSelected(item)
   end
 end
 
-function isReduceSizeEnabled(context)
-  default = true
-  data = context.getSharedData("reduce_apk_size")
-  if data is Bool then
-    return data
-  end
-  return default
-end
-
-view = loadlayout(activity, layout)
-activity.setContentView(view)
 function onCreate(bundle)
+  view = loadlayout(activity, layout)
+  activity.setContentView(view)
+
   darktheme.setChecked(theme.isDarkMode())
   darktheme.setOnCheckedChangeListener({
     onCheckedChanged: function(v, checked)
@@ -250,10 +246,23 @@ function onCreate(bundle)
     end
   })
   
-  reduceapk.setChecked(isReduceSizeEnabled(activity))
+  
+  isReduceSize = preference.getBoolean("reduce_apk_size", true)
+  reduceapk.setChecked(isReduceSize)
   reduceapk.setOnCheckedChangeListener({
     onCheckedChanged: function(v, checked)
-      activity.setSharedData("reduce_apk_size", checked)
+      preference.putBoolean("reduce_apk_size", checked)
+    end
+  })
+  
+  isSingleTab = preference.getBoolean("single_tab", true)
+  singletab.setChecked(isSingleTab)
+  singletab.setOnCheckedChangeListener({
+    onCheckedChanged: function(v, checked)
+      preference.putBoolean("single_tab", checked)
+      if not checked then
+        java.toast("For better stability, we recommend using Single Tab.");
+      end
     end
   })
   
