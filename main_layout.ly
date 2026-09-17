@@ -129,14 +129,14 @@ return {
     },
   },
   {
-    ImageView,
+    CircleImageView,
     id: "add",
     src: "icons/add.png",
     layout_width: "54dp",
     layout_height: "54dp",
     layout_gravity: "bottom|right",
     colorFilter: "#FFFFFFFF",
-    background: ui_utils.roundBg(0xFF58A6FF, 32),
+    backgroundColor: 0xFF58A6FF,
     layout_margin: "16dp"
   }
 }

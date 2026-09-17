@@ -53,6 +53,8 @@ if resourceId > 0 then
   result = activity.getResources().getDimensionPixelSize(resourceId);
 end
 
+shortcutBarEnabled = preference.getBoolean("shortcut_bar", true)
+
 function fileMenuBuilder(path)
   callback = {
     onMenuItemClick: function(item)
@@ -331,6 +333,29 @@ wordwrap = false
 readonly = false
 blanksymbol = false
 
+function ShortcutBar()
+  if not shortcutBarEnabled then
+    return
+  end 
+
+  buttonBarStyle = activity.getResources().getIdentifier("android:attr/buttonBarButtonStyle", null, null)
+  
+  for i in symbols do
+    btn = Button(activity, null, buttonBarStyle)
+    btn.setText(i.title)
+    btn. setTextColor(theme.text)
+    anon = function(sym) 
+      btn.setOnClickListener({
+        onClick: function(v)
+          editor.pasteText(sym);
+        end
+      })
+    end
+    anon(i.insert)
+    symbolBar.addView(btn)
+  end
+end
+
 function editorProperties(_editor)
   _editor.setWordwrap(wordwrap)
   _editor.setEditable(not readonly);
@@ -476,22 +501,7 @@ function onCreate(bundle)
     end
   })
 
-  buttonBarStyle = activity.getResources().getIdentifier("android:attr/buttonBarButtonStyle", null, null)
-  
-  for i in symbols do
-    btn = Button(activity, null, buttonBarStyle)
-    btn.setText(i.title)
-    btn. setTextColor(theme.text)
-    anon = function(sym) 
-      btn.setOnClickListener({
-        onClick: function(v)
-          editor.pasteText(sym);
-        end
-      })
-    end
-    anon(i.insert)
-    symbolBar.addView(btn)
-  end
+  ShortcutBar()
   
   redo.setOnClickListener({
     onClick: function(v)
@@ -529,11 +539,12 @@ function onCreate(bundle)
   
   menu.add(0, 0, 0, "Search")
   menu.add(0, 1, 0, "Build")
-  menu.add(0, 2, 0, "Word wrap").setCheckable(true)
-  menu.add(0, 3, 0, "Read-only mode").setCheckable(true)
-  menu.add(0, 4, 0, "Show blank symbol").setCheckable(true)
-  menu.add(0, 5, 0, "Properties")
-  menu.add(0, 6, 0, "About")
+  // menu.add(0, 2, 0, "Format")
+  menu.add(0, 3, 0, "Word wrap").setCheckable(true)
+  menu.add(0, 4, 0, "Read-only mode").setCheckable(true)
+  menu.add(0, 5, 0, "Show blank symbol").setCheckable(true)
+  menu.add(0, 6, 0, "Properties")
+  menu.add(0, 7, 0, "About")
   
   pop.setOnMenuItemClickListener({
     onMenuItemClick: function(item)
@@ -542,17 +553,19 @@ function onCreate(bundle)
           findreplace.setVisibility(visible)
           findAndReplaceOpen = true
           find.requestFocus()
+          find.showSoftInput()
         elif id == 1 then
           apkbuilder.BuildApk(activity, project)
         elif id == 2 then
+        elif id == 3 then
           wordwrap = not item.isChecked()
           item.setChecked(wordwrap)
           editor.setWordwrap(wordwrap)
-        elif id == 3 then
+        elif id == 4 then
           readonly = not item.isChecked()
           item.setChecked(readonly)
           editor.setEditable(not readonly);
-        elif id == 4 then
+        elif id == 5 then
           blanksymbol = not item.isChecked()
           item.setChecked(blanksymbol)
           if blanksymbol then
@@ -560,11 +573,11 @@ function onCreate(bundle)
           else
             editor.setNonPrintablePaintingFlags(0);
           end
-        elif id == 5 then
+        elif id == 6 then
           b = Bundle()
           b.putString('project', project)
           activity.newActivity("properties", b)
-        elif id == 6 then
+        elif id == 7 then
           activity.newActivity("about")
         end
         return true

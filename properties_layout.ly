@@ -90,7 +90,6 @@ return {
             layout_width: "48dp",
             layout_height: "48dp",
             scaleType: "centerCrop",
-            
           },
         },
         {

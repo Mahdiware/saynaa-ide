@@ -4,7 +4,7 @@ import "com.saynaa.view.*"
 import "com.saynaa.utils.Preferences"
 
 import utils.ui_utils, utils.bytecode_utils
-AndroidRId = java.bindClass('android.R$id')
+androidR = java.bindClass('android.R')
 
 actionBar = activity.getActionBar()
 actionBar.setDisplayHomeAsUpEnabled(true);
@@ -171,6 +171,7 @@ layout={
         switchItem("darktheme", "icons/theme.png","Dark Theme","Use dark interface",false),
         switchItem("reduceapk", "icons/ic_android.png", "Reduce APK Size", "Optimize APK size", true),
         switchItem("singletab", "icons/ic_sync.png", "Single Tab", "Use the stable single-editor tab", true),
+        switchItem("shortcutbar", "icons/ic_underline.png", "Shortcut Bar", "show editor Shortcut bar", true),
         buttonItem("about", "icons/documentation.png", "About", "Version, licenses and credits"),
       },
 
@@ -220,7 +221,7 @@ layout={
 }
 
 function onOptionsItemSelected(item)
-  if item.getItemId() == AndroidRId.home then
+  if item.getItemId() == androidR.id.home then
     activity.finish()
     return true
   end
@@ -263,6 +264,14 @@ function onCreate(bundle)
       if not checked then
         java.toast("For better stability, we recommend using Single Tab.");
       end
+    end
+  })
+  
+  shortcutBarEnabled = preference.getBoolean("shortcut_bar", true)
+  shortcutbar.setChecked(shortcutBarEnabled)
+  shortcutbar.setOnCheckedChangeListener({
+    onCheckedChanged: function(v, checked)
+      preference.putBoolean("shortcut_bar", checked)
     end
   })
   

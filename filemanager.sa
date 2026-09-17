@@ -11,17 +11,14 @@ import "com.saynaa.adapter.*"
 import "com.saynaa.view.*"
 import "com.saynaa.utils.FileUtil"
 
-activity.getActionBar().hide()
+actionBar = activity.getActionBar()
+actionBar.setDisplayHomeAsUpEnabled(true);
+actionBar.setDisplayShowHomeEnabled(false);
 
-result = 0
-resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+androidR = java.bindClass('android.R')
 
 AdapterData = []
 adapter = null
-
-if resourceId > 0 then
-  result = activity.getResources().getDimensionPixelSize(resourceId);
-end
 
 function openFolder(_path)
   AdapterData.clear()
@@ -56,7 +53,15 @@ function openFolder(_path)
   end
 end
 
+function onOptionsItemSelected(item)
+  if item.getItemId() == androidR.id.home then
+    activity.finish()
+    return true
+  end
+end
+
 function onCreate(bundle)
+  activity.setTitle("Choose source code (*.syp)")
   layout = loadlayout(activity, loadfile(saynaadir .. "/filemanager_layout.ly"))
   activity.setContentView(layout)
   
@@ -66,12 +71,6 @@ function onCreate(bundle)
   
   adapter = SaynaaAdapter(activity, loadfile(saynaadir .. "/utils/layout/filemanager.ly"), AdapterData)
   list.setAdapter(adapter)
-  
-  back.setOnClickListener({
-    onClick: function(v)
-      activity.finish()
-    end
-  })
 
   list.setOnItemClickListener({
     onItemClick: function(parent, view, position, id)
